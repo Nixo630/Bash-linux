@@ -82,6 +82,9 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             exit_jsh(strtol(argsComm[1],NULL,10));
         }
     }
+    else if (strcmp(argsComm[0],"?") == 0) {
+        fprintf(stderr,"%d\n",question_mark());
+    }
     else {
         argsComm[nbArgs] = "NULL";
         external_command(argsComm);
