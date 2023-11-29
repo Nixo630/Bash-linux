@@ -62,6 +62,13 @@ int external_command(char** command) {
     }
 }
 
+void cd (char* pathname) {
+    lastReturn = chdir(pathname);
+    if (lastReturn == -1) {
+        perror("cd : référence de chemin non valide");
+    }
+}
+
 int question_mark() {
     return lastReturn;
 }
@@ -74,4 +81,10 @@ int main(int argc, char** argv) {
     printf("test dune command =\n");
     lastReturn = external_command(test);
     printf("? command = %d\n",question_mark());
+    // Tests cd
+    // cd("test");
+    // printf("%i\n", lastReturn);
+    // current_folder = pwd();
+    // printf("pwd command = \n%s\n\n",current_folder);
+    // printf("%i\n", lastReturn);
 }
