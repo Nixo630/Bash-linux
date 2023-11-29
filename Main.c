@@ -7,67 +7,63 @@
 #include <string.h>
 #include "Main.h"
 
+int lastReturn = 0;
+
 char* pwd () {
-    int* size = malloc(sizeof(int));
-    char* buf = malloc(sizeof(char)*(*size));
-    if (buf == NULL || size == NULL) {
-        dprintf(STDERR_FILENO,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-        exit(0);
+    int size = 30;;
+    char* buf = malloc(sizeof(char)*(size));
+    if (buf == NULL) {
+        fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
+        exit(-1);
     }
-    *size = 30;
-    char* returnValue = malloc(sizeof(char)*(*size));
+    char* returnValue = malloc(sizeof(char)*(size));
     if (returnValue == NULL) {
-        dprintf(STDERR_FILENO,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-        exit(0);
+        fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
+        exit(-1);
     }
 
-    returnValue = getcwd(buf,*size);
+    returnValue = getcwd(buf,size);
     while (returnValue == NULL && errno == ERANGE) {
-        *size = (*size)+1;
-        buf = malloc(sizeof(char)*(*size));
+        size++;
+        buf = malloc(sizeof(char)*(size));
         if (buf == NULL) {
-            dprintf(STDERR_FILENO,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-            exit(0);
+            fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
+            exit(-1);
         }
-        returnValue = malloc(sizeof(char)*(*size));
+        returnValue = malloc(sizeof(char)*(size));
         if (returnValue == NULL) {
-            dprintf(STDERR_FILENO,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-            exit(0);
+            fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
+            exit(-1);
         }
-        returnValue = getcwd(buf,*size);
+        returnValue = getcwd(buf,size);
     }
     if (returnValue == NULL) {
-        dprintf(STDERR_FILENO,"ERROR IN pwd");
-        exit(0);
+        fprintf(stderr,"ERROR IN pwd");
+        return buf;
     }
-    //free(returnValue);
-    free(size);
     return buf;
 }
 
+/*
+This function returns the error of execvp and is exuting the command "command_name" with the arguments "arguments".
+*/
 int external_command(char* command_name, char** arguments) {
-    int* pid = malloc(sizeof(int));
-    *pid = fork();
-    if (*pid < 0) {
-        dprintf(STDERR_FILENO,"ERROR IN FORK !");
-        exit(0);
-    }
-    else if (*pid == 0) {
-        int* buf = malloc(sizeof(int));
-        *buf = execvp(command_name,arguments);
-        if (*buf == -1) {
-            free(buf);
-            exit(errno);
-        }
-        free(buf);
-        exit(0);
+    pid_t pid = fork();
+
+    if (pid == 0) {
+        int tmp = execvp(command_name,arguments);
+        fprintf(stderr,"Wrong command name\n");
+        exit(tmp);
     }
     else {
-        int* status = malloc(sizeof(int));
-        waitpid(*pid,status,0);
-        free(pid);
-        return WEXITSTATUS(*status);//return the exit value of the son
+        int status;
+        waitpid(pid,&status,0);
+        return WEXITSTATUS(status);//return the exit value of the son
     }
+}
+
+int question_mark() {
+    return lastReturn;
 }
 
 int main(int argc, char** argv) {
@@ -75,6 +71,7 @@ int main(int argc, char** argv) {
     printf("pwd command = \n%s\n\n",current_folder);
     free(current_folder);
     char* test[] = {NULL};//we need to have a NULL at the end of the list for the execvp to work
-    printf("test dune command = \n");
-    external_command("dune",test);
+    printf("test dune command =\n");
+    lastReturn = external_command("dune",test);
+    printf("? command = %d\n",question_mark());
 }
