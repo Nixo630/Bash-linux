@@ -56,7 +56,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
         if (argsComm[1] == NULL) argsComm[1] = ".";
         cd(argsComm[1]);
     }
-    else if (strcmp(argsComm[0], "pwd") == 0) pwd();
+    else if (strcmp(argsComm[0], "pwd") == 0) printf("%s\n",pwd());
     else if (strcmp(argsComm[0], "exit") == 0) exit_jsh();
     else {
         argsComm[nbArgs] = "NULL";
