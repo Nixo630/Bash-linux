@@ -53,8 +53,16 @@ int main(int argc, char** argv) {
 // Exécute la bonne commande à partir des mots donnés en argument.
 void callRightCommand(char** argsComm, unsigned nbArgs) {
     if (strcmp(argsComm[0], "cd") == 0) {
-        if (argsComm[1] == NULL) argsComm[1] = ".";
-        cd(argsComm[1]);
+        if (argsComm[1] == NULL) {
+            char* currentFolder = pwd();
+            cd("..");
+            while(strcmp(currentFolder,pwd()) != 0) {
+                currentFolder = pwd();
+            }
+        }
+        else {
+            cd(argsComm[1]);
+        }
     }
     else if (strcmp(argsComm[0], "pwd") == 0) printf("%s\n",pwd());
     else if (strcmp(argsComm[0], "exit") == 0) exit_jsh();
