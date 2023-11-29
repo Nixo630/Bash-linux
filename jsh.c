@@ -11,6 +11,11 @@
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
 
+<<<<<<< jsh.c
+int lastReturn = 0;
+int nbJobs = 0;
+char* current_folder ;
+=======
 bool running;
 int lastReturn;
 int nbJobs;
@@ -93,6 +98,7 @@ void callRightCommand(char argsComm[3][100]) {
         exit(EXIT_FAILURE);
     }
 }
+>>>>>>> jsh.c
 
 char* pwd () {
     lastReturn = -1;
@@ -167,10 +173,13 @@ int question_mark() {
     return lastReturn;
 }
 
+<<<<<<< jsh.c
+=======
 void exit_jsh() {
     running = 0;
 }
 
+>>>>>>> jsh.c
 void print_path (){
     char * jobs = malloc(sizeof(char));
     char *temp = malloc(sizeof(char));
@@ -198,4 +207,50 @@ void print_path (){
     }
     free(temp);
     free(jobs);
+<<<<<<< jsh.c
+}
+/*
+void read_file(){
+    char * input = malloc (sizeof(char));
+    using_history();
+    char * delimitor = " ";
+    while ((input = readline(""))) {
+
+        if (strlen(input) > 0 ){
+            add_history (input);
+            /* char * function = strtok(input,delimitor);
+            // la fonction
+            if (strcmp(function,"pwd")) {
+                printf("%s\n",current_folder);
+                lastReturn = 0;
+                }
+            */
+            
+            }
+            
+        }
+        
+       
+    }
+     free (input);
+}
+*/
+int main(int argc, char** argv) {
+    current_folder = pwd();
+    /*
+    printf("pwd command = \n%s\n\n",current_folder);
+    free(current_folder);
+    char* test[] = {"dune","--version",NULL};//we need to have a NULL at the end of the list for the execvp to work
+    printf("test dune command =\n");
+    lastReturn = external_command(test);
+    printf("? command = %d\n",question_mark());
+    //Tests cd
+    cd("test");
+    current_folder = pwd();
+    printf("pwd command = \n%s\n\n",current_folder);*/
+    printf(BLEU "j'écrit en bleu\n");
+    printf(NORMAL"j'écrit en blanc\n");
+    print_path();
+=======
+>>>>>>> jsh.c
 }
