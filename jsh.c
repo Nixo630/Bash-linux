@@ -11,22 +11,6 @@
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
 
-bool running;
-int lastReturn;
-int nbJobs;
-char* current_folder;
-
-// Fonctions auxilliaires
-void callRightCommand(char(*)[100]);
-void print_path();
-
-// Fonctions de commande
-char* pwd();
-void cd(char*);
-int question_mark();
-int external_command(char**);
-void exit_jsh();
-
 int main(int argc, char** argv) {
    // ----- Tests -----
     char* current_folder = pwd();
