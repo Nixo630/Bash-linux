@@ -20,27 +20,30 @@ int main(int argc, char** argv) {
     lastReturn = 0;
     nbJobs = 0;
 
-    char* buffer; // Stocke la commande entrée par l'utilisateur.
+    char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
     char** argsComm = calloc(15, sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
 
     // Boucle de récupération et de découpe des commandes.
     while (running) {
         print_path();
-        buffer = readline(""); // Récupère la commande entrée (allocation dynamique).
-        argsComm[0] = strtok(buffer, " ");
-        index = 1;
-        while (1) { // Boucle sur les mots d'une commande.
-            if (index == 15) {
-                perror("Too many arguments");
-                exit(EXIT_FAILURE);
+        buffer = readline(NULL); // Récupère la commande entrée (allocation dynamique).
+        if (buffer && *buffer) {
+            add_history(buffer);
+            argsComm[0] = strtok(buffer, " ");
+            index = 1;
+            while (1) { // Boucle sur les mots d'une commande.
+                if (index == 15) {
+                    perror("Too many arguments");
+                    exit(EXIT_FAILURE);
+                }
+                argsComm[index] = strtok(NULL, " ");
+                if (argsComm[index] == NULL) break;
+                ++index;
             }
-            argsComm[index] = strtok(NULL, " ");
-            if (argsComm[index] == NULL) break;
-            ++index;
-        }
-        argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
-        if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
+            argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
+            if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
+            }
     }
     // Libération de la mémoire après terminaison.
     free(buffer);
@@ -68,7 +71,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
     }
     else if (strcmp(argsComm[0], "pwd") == 0) {
         char* folder = pwd();
-        printf("%s\n",folder);
+        fprintf(stderr,"%s\n",folder);
         free(folder);
     }
     else if (strcmp(argsComm[0], "exit") == 0) exit_jsh();
@@ -164,9 +167,9 @@ void print_path (){
     int length = strlen(temp)+2;// length of "[nbJobs]" 
     *(jobs+1) = *temp;
     *(jobs+1+length-2) = ']';
-    printf(BLEU"%s",jobs);
+    fprintf(stderr,BLEU"%s",jobs);
     
-    if (strlen(current_folder)<(28-(length))) printf(NORMAL "%s$ ", current_folder);
+    if (strlen(current_folder)<(28-(length))) fprintf(stderr,NORMAL "%s$ ", current_folder);
     else{
         
         int x = strlen(current_folder)-28+length+3;
@@ -178,7 +181,7 @@ void print_path (){
         for (int i = x ; i <= strlen(current_folder); i++){
             *(path+i-x+3) = *(current_folder+i);
         }
-        printf(NORMAL "%s$ ", path);
+        fprintf(stderr,NORMAL "%s$ ", path);
         free(path);
     }
     free(temp);
