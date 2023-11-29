@@ -23,6 +23,7 @@ int main(int argc, char** argv) {
     char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
     char** argsComm = calloc(15, sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
+    using_history();
 
     // Boucle de récupération et de découpe des commandes.
     while (running) {
@@ -37,6 +38,7 @@ int main(int argc, char** argv) {
                     perror("Too many arguments");
                     exit(EXIT_FAILURE);
                 }
+                add_history(buffer);
                 argsComm[index] = strtok(NULL, " ");
                 if (argsComm[index] == NULL) break;
                 ++index;
@@ -159,31 +161,45 @@ void exit_jsh() {
     running = 0;
 }
 
+int length_jobs(){
+    int i = 1;
+    int x = nbJobs;
+    while( x >= 10) {
+        i++;
+        x = x/10;
+    }
+    return i;
+}
+
 void print_path (){
-    char * jobs = malloc(sizeof(char));
-    char *temp = malloc(sizeof(char));
+    char * jobs = malloc(sizeof(char)*length_jobs()+3);
+    char *temp = malloc(sizeof(char)*length_jobs()+1);
     *jobs = '[';
     sprintf(temp,"%d",nbJobs);
-    int length = strlen(temp)+2;// length of "[nbJobs]" 
-    *(jobs+1) = *temp;
-    *(jobs+1+length-2) = ']';
-    fprintf(stderr,BLEU"%s",jobs);
+    for (int i = 0; i < length_jobs(); i++){
+        *(jobs+1+i) = *(temp+i);
+    }
+    *(jobs+length_jobs()+1) = ']';
+    printf(BLEU"%s",jobs);
+
+    free(temp);
+    free(jobs);
+    int x = strlen(current_folder)-28+length_jobs()+2+3;
+    // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..." 
+    if (x<=0) printf(NORMAL "%s$ ", current_folder);
     
-    if (strlen(current_folder)<(28-(length))) fprintf(stderr,NORMAL "%s$ ", current_folder);
+
     else{
         
-        int x = strlen(current_folder)-28+length+3;
-        // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..." 
-        char *path = malloc(sizeof(char)*30);
+        char *path = malloc(sizeof(char)*(strlen(current_folder)));
         *path = '.';
         *(path+1)= '.';
         *(path+2) = '.';
         for (int i = x ; i <= strlen(current_folder); i++){
             *(path+i-x+3) = *(current_folder+i);
         }
-        fprintf(stderr,NORMAL "%s$ ", path);
+        printf(NORMAL "%s$ ", path);
         free(path);
     }
-    free(temp);
-    free(jobs);
+
 }
