@@ -11,6 +11,22 @@
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
 
+bool running;
+int lastReturn;
+int nbJobs;
+char* current_folder;
+
+// Fonctions auxilliaires
+void callRightCommand(char**, unsigned);
+void print_path();
+
+// Fonctions de commande
+char* pwd();
+void cd(char*);
+int question_mark();
+int external_command(char**);
+void exit_jsh();
+
 int main(int argc, char** argv) {
    // ----- Tests -----
     char* current_folder = pwd();
@@ -27,7 +43,7 @@ int main(int argc, char** argv) {
     // Tests print_path
     printf(BLEU "j'écrit en bleu\n");
     printf(NORMAL"j'écrit en blanc\n");
-    print_path();
+    // print_path();
 
 
     // Initialisation des variables globales.
@@ -37,44 +53,45 @@ int main(int argc, char** argv) {
 
     size_t buffSize = 150;
     char* buffer; // Stocke la commande entrée par l'utilisateur.
-    char argsComm[3][100] = {"", "", ""}; // Stocke les différents morceaux de la commande entrée.
-    char* arg; // Stocke temporairement chaque mot de la commande.
+    char** argsComm = calloc(15, sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
+    unsigned index;
 
     // Boucle de récupération et de découpe des commandes.
     while (running) {
         getline(&buffer, &buffSize, stdin); // Récupère la commande entrée (allocation dynamique).
-        arg = strtok(buffer, " "); // allocation dynamique de l'espace pointé par arg.
-        strcpy(argsComm[0], arg);
-        arg = strtok(NULL, " ");
-        unsigned index = 0;
-        while (arg != NULL) { // Boucle sur les mots d'une commande.
-            ++index;
-            if (index == 3) {
+        argsComm[0] = strtok(buffer, " ");
+        index = 1;
+        while (1) { // Boucle sur les mots d'une commande.
+            if (index == 15) {
                 perror("Trop d'arguments");
                 exit(EXIT_FAILURE);
             }
-            strcpy(argsComm[index], arg);
-            arg = strtok(NULL, " ");
+            argsComm[index] = strtok(NULL, " ");
+            if (argsComm[index] == NULL) break;
+            ++index;
         }
-        argsComm[index][strlen(argsComm[index]) - 1] = '\0'; // Enlève \n de la fin du dernier mot.
-        if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm);
+        argsComm[index-1][strlen(argsComm[index-1]) - 1] = '\0'; // Enlève le \n de la fin du dernier mot.
+        if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
     }
     // Libération de la mémoire après terminaison.
     free(buffer);
-    free(arg);
+    for (unsigned i = 0; i < index-1; ++i) {
+        free(argsComm[i]);
+    }
+    free(argsComm);
 }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
-void callRightCommand(char argsComm[3][100]) {
+void callRightCommand(char** argsComm, unsigned nbArgs) {
     if (strcmp(argsComm[0], "cd") == 0) {
-        if (strcmp(argsComm[0], "")) strcpy(argsComm[1], ".");
+        if (argsComm[1] == NULL) argsComm[1] = ".";
         cd(argsComm[1]);
     }
     else if (strcmp(argsComm[0], "pwd") == 0) pwd();
     else if (strcmp(argsComm[0], "exit") == 0) exit_jsh();
     else {
-        perror("Commande invalide");
-        exit(EXIT_FAILURE);
+        argsComm[nbArgs] = "NULL";
+        external_command(argsComm);
     }
 }
 
