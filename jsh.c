@@ -10,6 +10,7 @@
 int lastReturn = 0;
 
 char* pwd () {
+    lastReturn = -1;
     int size = 30;;
     char* buf = malloc(sizeof(char)*(size));
     if (buf == NULL) {
@@ -41,6 +42,7 @@ char* pwd () {
         fprintf(stderr,"ERROR IN pwd");
         return buf;
     }
+    lastReturn = 0;
     return buf;
 }
 
@@ -65,7 +67,14 @@ int external_command(char** command) {
 void cd (char* pathname) {
     lastReturn = chdir(pathname);
     if (lastReturn == -1) {
-        perror("cd : référence de chemin non valide");
+        switch (errno) {
+            case (ENOENT) : fprintf(stderr,"cd : non-existent folder\n");break;
+            case (EACCES) : fprintf(stderr,"cd : Access restricted\n");break;
+            case (ENAMETOOLONG) : fprintf(stderr,"cd : Folder name too long\n");break;
+            case (ENOTDIR) : fprintf(stderr,"cd : An element is not a dir\n");break;
+            case (ENOMEM) : fprintf(stderr,"cd : Not enough memory for the core\n");break;
+            default : fprintf(stderr,"Unknown error !\n");break;
+        }
     }
 }
 
@@ -81,10 +90,8 @@ int main(int argc, char** argv) {
     printf("test dune command =\n");
     lastReturn = external_command(test);
     printf("? command = %d\n",question_mark());
-    // Tests cd
-    // cd("test");
-    // printf("%i\n", lastReturn);
-    // current_folder = pwd();
-    // printf("pwd command = \n%s\n\n",current_folder);
-    // printf("%i\n", lastReturn);
+    //Tests cd
+    cd("test");
+    current_folder = pwd();
+    printf("pwd command = \n%s\n\n",current_folder);
 }
