@@ -131,6 +131,7 @@ void cd (char* pathname) {
             default : fprintf(stderr,"Unknown error !\n");break;
         }
     }
+    current_folder = pwd();
 }
 
 int question_mark() {
