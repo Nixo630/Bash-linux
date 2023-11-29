@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include "jsh.h"
 
 #define NORMAL "\033[00m"
@@ -15,14 +17,11 @@ int main(int argc, char** argv) {
    // ----- Tests -----
     current_folder = pwd();
 
-
-
     // Initialisation des variables globales.
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
 
-    size_t buffSize = 150;
     char* buffer; // Stocke la commande entrée par l'utilisateur.
     char** argsComm = calloc(15, sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
@@ -30,7 +29,7 @@ int main(int argc, char** argv) {
     // Boucle de récupération et de découpe des commandes.
     while (running) {
         print_path();
-        getline(&buffer, &buffSize, stdin); // Récupère la commande entrée (allocation dynamique).
+        buffer = readline(""); // Récupère la commande entrée (allocation dynamique).
         argsComm[0] = strtok(buffer, " ");
         index = 1;
         while (1) { // Boucle sur les mots d'une commande.
