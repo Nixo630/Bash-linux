@@ -46,8 +46,8 @@ int main(int argc, char** argv) {
 
     // Boucle de récupération et de découpe des commandes.
     while (running) {
-        getline(&buffer, 0, stdin); // Récupère la commande entrée.
-        arg = strtok(buffer, " ");
+        getline(&buffer, &buffSize, stdin); // Récupère la commande entrée (allocation dynamique).
+        arg = strtok(buffer, " "); // allocation dynamique de l'espace pointé par arg.
         strcpy(argsComm[0], arg);
         arg = strtok(NULL, " ");
         unsigned index = 0;
