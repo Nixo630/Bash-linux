@@ -19,6 +19,7 @@ int main(int argc, char** argv) {
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
+    current_jobs = 0;
 
     char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
     char** argsComm = calloc(15, sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
@@ -49,9 +50,6 @@ int main(int argc, char** argv) {
     }
     // Libération de la mémoire après terminaison.
     free(buffer);
-    for (unsigned i = 0; i < index-1; ++i) {
-        free(argsComm[i]);
-    }
     free(argsComm);
 }
 
@@ -76,7 +74,14 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
         fprintf(stderr,"%s\n",folder);
         free(folder);
     }
-    else if (strcmp(argsComm[0], "exit") == 0) exit_jsh();
+    else if (strcmp(argsComm[0], "exit") == 0) {
+        if (argsComm[1] == NULL) {
+            exit_jsh(current_jobs);
+        }
+        else {
+            exit_jsh(strtol(argsComm[1],NULL,10));
+        }
+    }
     else {
         argsComm[nbArgs] = "NULL";
         external_command(argsComm);
@@ -157,8 +162,19 @@ int question_mark() {
     return lastReturn;
 }
 
-void exit_jsh() {
-    running = 0;
+void exit_jsh(int targetedJob) {
+    if (nbJobs > 0) {
+        lastReturn = 1;
+        fprintf(stderr,"There is other jobs running");
+        running = 0;
+    }
+    else if (targetedJob == current_jobs) {
+        lastReturn = targetedJob;
+        running = 0;
+    }
+    else {
+        lastReturn = targetedJob;
+    }
 }
 
 void print_path (){
