@@ -2,12 +2,85 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
 #include "jsh.h"
 
-int lastReturn = 0;
+int lastReturn;
+bool running;
+
+// Fonctions auxilliaires
+void callRightCommand(char(*)[100]);
+
+// Fonctions de commande
+char* pwd();
+void cd(char*);
+int question_mark();
+int external_command(char**);
+void exit_jsh();
+
+int main(int argc, char** argv) {
+   // ----- Tests -----
+    char* current_folder = pwd();
+    printf("pwd command = \n%s\n\n",current_folder);
+    free(current_folder);
+    char* test[] = {"dune","--version",NULL};//we need to have a NULL at the end of the list for the execvp to work
+    printf("test dune command =\n");
+    lastReturn = external_command(test);
+    printf("? command = %d\n",question_mark());
+    //Tests cd
+    cd("test");
+    current_folder = pwd();
+    printf("pwd command = \n%s\n\n",current_folder);
+
+    // Initialisation des variables globales.
+    lastReturn = 0;
+    running = 1;
+
+    size_t buffSize = 150;
+    char* buffer; // Stocke la commande entrée par l'utilisateur.
+    char argsComm[3][100] = {"", "", ""}; // Stocke les différents morceaux de la commande entrée.
+    char* arg; // Stocke temporairement chaque mot de la commande.
+
+    // Boucle de récupération et de découpe des commandes.
+    while (running) {
+        getline(&buffer, 0, stdin); // Récupère la commande entrée.
+        arg = strtok(buffer, " ");
+        strcpy(argsComm[0], arg);
+        arg = strtok(NULL, " ");
+        unsigned index = 0;
+        while (arg != NULL) { // Boucle sur les mots d'une commande.
+            ++index;
+            if (index == 3) {
+                perror("Trop d'arguments");
+                exit(EXIT_FAILURE);
+            }
+            strcpy(argsComm[index], arg);
+            arg = strtok(NULL, " ");
+        }
+        argsComm[index][strlen(argsComm[index]) - 1] = '\0'; // Enlève \n de la fin du dernier mot.
+        if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm);
+    }
+    // Libération de la mémoire après terminaison.
+    free(buffer);
+    free(arg);
+}
+
+// Exécute la bonne commande à partir des mots donnés en argument.
+void callRightCommand(char argsComm[3][100]) {
+    if (strcmp(argsComm[0], "cd") == 0) {
+        if (strcmp(argsComm[0], "")) strcpy(argsComm[1], ".");
+        cd(argsComm[1]);
+    }
+    else if (strcmp(argsComm[0], "pwd") == 0) pwd();
+    else if (strcmp(argsComm[0], "exit") == 0) exit_jsh();
+    else {
+        perror("Commande invalide");
+        exit(EXIT_FAILURE);
+    }
+}
 
 char* pwd () {
     lastReturn = -1;
@@ -82,16 +155,6 @@ int question_mark() {
     return lastReturn;
 }
 
-int main(int argc, char** argv) {
-    char* current_folder = pwd();
-    printf("pwd command = \n%s\n\n",current_folder);
-    free(current_folder);
-    char* test[] = {"dune","--version",NULL};//we need to have a NULL at the end of the list for the execvp to work
-    printf("test dune command =\n");
-    lastReturn = external_command(test);
-    printf("? command = %d\n",question_mark());
-    //Tests cd
-    cd("test");
-    current_folder = pwd();
-    printf("pwd command = \n%s\n\n",current_folder);
+void exit_jsh() {
+    running = 0;
 }
