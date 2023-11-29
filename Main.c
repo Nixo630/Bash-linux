@@ -47,11 +47,11 @@ char* pwd () {
 /*
 This function returns the error of execvp and is exuting the command "command_name" with the arguments "arguments".
 */
-int external_command(char* command_name, char** arguments) {
+int external_command(char** command) {
     pid_t pid = fork();
 
     if (pid == 0) {
-        int tmp = execvp(command_name,arguments);
+        int tmp = execvp(command[0],command);
         fprintf(stderr,"Wrong command name\n");
         exit(tmp);
     }
@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
     char* current_folder = pwd();
     printf("pwd command = \n%s\n\n",current_folder);
     free(current_folder);
-    char* test[] = {NULL};//we need to have a NULL at the end of the list for the execvp to work
+    char* test[] = {"dune","--version",NULL};//we need to have a NULL at the end of the list for the execvp to work
     printf("test dune command =\n");
-    lastReturn = external_command("dune",test);
+    lastReturn = external_command(test);
     printf("? command = %d\n",question_mark());
 }
