@@ -65,7 +65,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
                 currentFolder = pwd();
                 cd("..");
             }
-            free(current_folder);
+            free(currentFolder);
         }
         else {
             cd(argsComm[1]);
@@ -161,45 +161,20 @@ void exit_jsh() {
     running = 0;
 }
 
-int length_jobs(){
-    int i = 1;
-    int x = nbJobs;
-    while( x >= 10) {
-        i++;
-        x = x/10;
-    }
-    return i;
-}
-
 void print_path (){
-    char * jobs = malloc(sizeof(char)*length_jobs()+3);
-    char *temp = malloc(sizeof(char)*length_jobs()+1);
-    *jobs = '[';
-    sprintf(temp,"%d",nbJobs);
-    for (int i = 0; i < length_jobs(); i++){
-        *(jobs+1+i) = *(temp+i);
-    }
-    *(jobs+length_jobs()+1) = ']';
-    printf(BLEU"%s",jobs);
-
-    free(temp);
-    free(jobs);
-    int x = strlen(current_folder)-28+length_jobs()+2+3;
+    fprintf(stderr,BLEU"[%d]",nbJobs);
     // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..." 
-    if (x<=0) printf(NORMAL "%s$ ", current_folder);
-    
-
+    if (strlen(current_folder) == 1) fprintf(stderr,NORMAL "~$ ");
+    else if (strlen(current_folder)<=30) fprintf(stderr,NORMAL "%s$ ", current_folder);
     else{
-        
         char *path = malloc(sizeof(char)*(strlen(current_folder)));
         *path = '.';
         *(path+1)= '.';
         *(path+2) = '.';
-        for (int i = x ; i <= strlen(current_folder); i++){
-            *(path+i-x+3) = *(current_folder+i);
+        for (int i = strlen(current_folder)-30; i <= strlen(current_folder); i++){
+            *(path+i-(strlen(current_folder)-30)) = *(current_folder+i);
         }
-        printf(NORMAL "%s$ ", path);
+        fprintf(stderr,NORMAL "%s$ ", path);
         free(path);
     }
-
 }
