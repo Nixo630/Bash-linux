@@ -14,7 +14,7 @@
 int main(int argc, char** argv) {
    // ----- Tests -----
     current_folder = pwd();
-    print_path();
+
 
 
     // Initialisation des variables globales.
@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
 
     // Boucle de récupération et de découpe des commandes.
     while (running) {
+        print_path();
         getline(&buffer, &buffSize, stdin); // Récupère la commande entrée (allocation dynamique).
         argsComm[0] = strtok(buffer, " ");
         index = 1;
