@@ -4,3 +4,6 @@ AUTHOR.md
 ./git/*
 ./vscode/*
 *.exe
+jsh
+jsh.o
+Makefile
