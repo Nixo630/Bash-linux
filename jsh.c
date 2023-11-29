@@ -13,21 +13,8 @@
 
 int main(int argc, char** argv) {
    // ----- Tests -----
-    char* current_folder = pwd();
-    printf("pwd command = \n%s\n\n",current_folder);
-    free(current_folder);
-    char* test[] = {"dune","--version",NULL};//we need to have a NULL at the end of the list for the execvp to work
-    printf("test dune command =\n");
-    lastReturn = external_command(test);
-    printf("? command = %d\n",question_mark());
-    //Tests cd
-    cd("test");
     current_folder = pwd();
-    printf("pwd command = \n%s\n\n",current_folder);
-    // Tests print_path
-    printf(BLEU "j'écrit en bleu\n");
-    printf(NORMAL"j'écrit en blanc\n");
-    // print_path();
+    print_path();
 
 
     // Initialisation des variables globales.
