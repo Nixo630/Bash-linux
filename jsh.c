@@ -58,13 +58,19 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             cd("..");
             while(strcmp(currentFolder,pwd()) != 0) {
                 currentFolder = pwd();
+                cd("..");
             }
+            free(current_folder);
         }
         else {
             cd(argsComm[1]);
         }
     }
-    else if (strcmp(argsComm[0], "pwd") == 0) printf("%s\n",pwd());
+    else if (strcmp(argsComm[0], "pwd") == 0) {
+        char* folder = pwd();
+        printf("%s\n",folder);
+        free(folder);
+    }
     else if (strcmp(argsComm[0], "exit") == 0) exit_jsh();
     else {
         argsComm[nbArgs] = "NULL";
