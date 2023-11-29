@@ -8,11 +8,17 @@
 #include <string.h>
 #include "jsh.h"
 
-int lastReturn;
+#define NORMAL "\033[00m"
+#define BLEU "\033[01;34m"
+
 bool running;
+int lastReturn;
+int nbJobs;
+char* current_folder;
 
 // Fonctions auxilliaires
 void callRightCommand(char(*)[100]);
+void print_path();
 
 // Fonctions de commande
 char* pwd();
@@ -34,10 +40,16 @@ int main(int argc, char** argv) {
     cd("test");
     current_folder = pwd();
     printf("pwd command = \n%s\n\n",current_folder);
+    // Tests print_path
+    printf(BLEU "j'écrit en bleu\n");
+    printf(NORMAL"j'écrit en blanc\n");
+    print_path();
+
 
     // Initialisation des variables globales.
-    lastReturn = 0;
     running = 1;
+    lastReturn = 0;
+    nbJobs = 0;
 
     size_t buffSize = 150;
     char* buffer; // Stocke la commande entrée par l'utilisateur.
@@ -157,4 +169,33 @@ int question_mark() {
 
 void exit_jsh() {
     running = 0;
+}
+
+void print_path (){
+    char * jobs = malloc(sizeof(char));
+    char *temp = malloc(sizeof(char));
+    *jobs = '[';
+    sprintf(temp,"%d",nbJobs);
+    int length = strlen(temp)+2;// length of "[nbJobs]" 
+    *(jobs+1) = *temp;
+    *(jobs+1+length-2) = ']';
+    printf(BLEU"%s",jobs);
+    
+    if (strlen(current_folder)<(28-(length))) printf(NORMAL "%s$ ", current_folder);
+    else{
+        
+        int x = strlen(current_folder)-28+length+3;
+        // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..." 
+        char *path = malloc(sizeof(char)*30);
+        *path = '.';
+        *(path+1)= '.';
+        *(path+2) = '.';
+        for (int i = x ; i <= strlen(current_folder); i++){
+            *(path+i-x+3) = *(current_folder+i);
+        }
+        printf(NORMAL "%s$ ", path);
+        free(path);
+    }
+    free(temp);
+    free(jobs);
 }
