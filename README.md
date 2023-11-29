@@ -9,7 +9,9 @@ In order to use our project you juste need to clone this github page.
 Therefore all you have to do is :
 ```bash
 git clone https://gaufre.informatique.univ-paris-diderot.fr/tomasi/projet-sy5.git
+```
 
+```
 cd projet-sy5
 ```
 
