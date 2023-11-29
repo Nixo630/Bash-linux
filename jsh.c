@@ -16,8 +16,6 @@
 int main(int argc, char** argv) {
    // ----- Tests -----
     current_folder = pwd();
-
-    // Initialisation des variables globales.
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
@@ -34,14 +32,14 @@ int main(int argc, char** argv) {
         index = 1;
         while (1) { // Boucle sur les mots d'une commande.
             if (index == 15) {
-                perror("Trop d'arguments");
+                perror("Too many arguments");
                 exit(EXIT_FAILURE);
             }
             argsComm[index] = strtok(NULL, " ");
             if (argsComm[index] == NULL) break;
             ++index;
         }
-        argsComm[index-1][strlen(argsComm[index-1]) - 1] = '\0'; // Enlève le \n de la fin du dernier mot.
+        argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
         if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
     }
     // Libération de la mémoire après terminaison.
