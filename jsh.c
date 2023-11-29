@@ -7,7 +7,12 @@
 #include <string.h>
 #include "jsh.h"
 
+#define NORMAL "\033[00m"
+#define BLEU "\033[01;34m"
+
 int lastReturn = 0;
+int nbJobs = 0;
+char* current_folder ;
 
 char* pwd () {
     lastReturn = -1;
@@ -82,8 +87,63 @@ int question_mark() {
     return lastReturn;
 }
 
+void print_path (){
+    char * jobs = malloc(sizeof(char));
+    char *temp = malloc(sizeof(char));
+    *jobs = '[';
+    sprintf(temp,"%d",nbJobs);
+    int length = strlen(temp)+2;// length of "[nbJobs]" 
+    *(jobs+1) = *temp;
+    *(jobs+1+length-2) = ']';
+    printf(BLEU"%s",jobs);
+    
+    if (strlen(current_folder)<(28-(length))) printf(NORMAL "%s$ ", current_folder);
+    else{
+        
+        int x = strlen(current_folder)-28+length+3;
+        // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..." 
+        char *path = malloc(sizeof(char)*30);
+        *path = '.';
+        *(path+1)= '.';
+        *(path+2) = '.';
+        for (int i = x ; i <= strlen(current_folder); i++){
+            *(path+i-x+3) = *(current_folder+i);
+        }
+        printf(NORMAL "%s$ ", path);
+        free(path);
+    }
+    free(temp);
+    free(jobs);
+}
+/*
+void read_file(){
+    char * input = malloc (sizeof(char));
+    using_history();
+    char * delimitor = " ";
+    while ((input = readline(""))) {
+
+        if (strlen(input) > 0 ){
+            add_history (input);
+            /* char * function = strtok(input,delimitor);
+            // la fonction
+            if (strcmp(function,"pwd")) {
+                printf("%s\n",current_folder);
+                lastReturn = 0;
+                }
+            */
+            
+            }
+            
+        }
+        
+       
+    }
+     free (input);
+}
+*/
 int main(int argc, char** argv) {
-    char* current_folder = pwd();
+    current_folder = pwd();
+    /*
     printf("pwd command = \n%s\n\n",current_folder);
     free(current_folder);
     char* test[] = {"dune","--version",NULL};//we need to have a NULL at the end of the list for the execvp to work
@@ -93,5 +153,8 @@ int main(int argc, char** argv) {
     //Tests cd
     cd("test");
     current_folder = pwd();
-    printf("pwd command = \n%s\n\n",current_folder);
+    printf("pwd command = \n%s\n\n",current_folder);*/
+    printf(BLEU "j'écrit en bleu\n");
+    printf(NORMAL"j'écrit en blanc\n");
+    print_path();
 }
