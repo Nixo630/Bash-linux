@@ -76,6 +76,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             free(currentFolder);
         }
         else if (strcmp(argsComm[1],"-") == 0) {
+            fprintf(stderr,"%s\n",previous_folder);
             cd(previous_folder);
         }
         else {
