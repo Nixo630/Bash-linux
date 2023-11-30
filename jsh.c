@@ -8,26 +8,30 @@
 #include <string.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <limits.h>
 #include "jsh.h"
 
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
-   // ----- Tests -----
     current_folder = pwd();
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
-    current_jobs = 0;
 
+    main_loop();
+    return lastReturn;
+}
+
+void main_loop() {
     char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
     char** argsComm = calloc(15, sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
     using_history();
-
     // Boucle de récupération et de découpe des commandes.
     while (running) {
+        reset(argsComm);
         print_path();
         buffer = readline(NULL); // Récupère la commande entrée (allocation dynamique).
         if (buffer && *buffer) {
@@ -56,7 +60,11 @@ int main(int argc, char** argv) {
 // Exécute la bonne commande à partir des mots donnés en argument.
 void callRightCommand(char** argsComm, unsigned nbArgs) {
     if (strcmp(argsComm[0], "cd") == 0) {
-        if (argsComm[1] == NULL) {
+        if (argsComm[2] != NULL) {
+            fprintf(stderr,"bash : cd: too many arguments\n");
+            lastReturn = -1;
+        }
+        else if (argsComm[1] == NULL) {
             char* currentFolder = pwd();
             cd("..");
             while(strcmp(currentFolder,pwd()) != 0) {
@@ -70,24 +78,54 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
         }
     }
     else if (strcmp(argsComm[0], "pwd") == 0) {
-        char* folder = pwd();
-        fprintf(stderr,"%s\n",folder);
-        free(folder);
-    }
-    else if (strcmp(argsComm[0], "exit") == 0) {
-        if (argsComm[1] == NULL) {
-            exit_jsh(current_jobs);
+        if (argsComm[1] != NULL) {
+            fprintf(stderr,"bash : pwd: too many arguments\n");
+            lastReturn = -1;
         }
         else {
-            exit_jsh(strtol(argsComm[1],NULL,10));
+            char* folder = pwd();
+            fprintf(stderr,"%s\n",folder);
+            free(folder);
+        }
+    }
+    else if (strcmp(argsComm[0], "exit") == 0) {
+        if (argsComm[2] != NULL) {
+            fprintf(stderr,"bash : exit: too many arguments\n");
+            lastReturn = -1;
+        }
+        else if (argsComm[1] == NULL) {
+            exit_jsh(lastReturn);
+        }
+        else {
+            char** tmp = malloc(sizeof(char)*50);
+            int int_args = strtol(argsComm[1],tmp,10);//base 10 and we store invalids arguments in tmp
+            if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
+                fprintf(stderr,"Exit takes an normal integer as argument\n");
+            }
+            else {
+                exit_jsh(int_args);
+            }
+            free(tmp);
         }
     }
     else if (strcmp(argsComm[0],"?") == 0) {
-        fprintf(stderr,"%d\n",question_mark());
+        if (argsComm[1] != NULL) {
+            fprintf(stderr,"bash : ?: too many arguments");
+            lastReturn = -1;
+        }
+        else {
+            fprintf(stderr,"%d\n",question_mark());
+        }
     }
     else {
         argsComm[nbArgs] = "NULL";
         external_command(argsComm);
+    }
+}
+
+void reset(char** args) {
+    for (int i = 0; i < 15; i++) {
+        args[i] = NULL;
     }
 }
 
@@ -165,18 +203,16 @@ int question_mark() {
     return lastReturn;
 }
 
-void exit_jsh(int targetedJob) {
+void exit_jsh(int val) {
     if (nbJobs > 0) {
         lastReturn = 1;
         fprintf(stderr,"There is other jobs running");
-        running = 0;
-    }
-    else if (targetedJob == current_jobs) {
-        lastReturn = targetedJob;
+        main_loop();
         running = 0;
     }
     else {
-        lastReturn = targetedJob;
+        lastReturn = val;
+        running = 0;
     }
 }
 
