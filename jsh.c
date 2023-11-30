@@ -28,33 +28,31 @@ int main(int argc, char** argv) {
 
 void main_loop() {
     char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
-    size_t wordsCapacity = 15;
-    char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
+    char** argsComm = calloc(15, sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
     using_history();
     // Boucle de récupération et de découpe des commandes.
     while (running) {
-        reset(argsComm, wordsCapacity);
-        print_path(); // Affichage prompt.
-        buffer = readline(NULL); // Récupère la commande entrée.
+        reset(argsComm);
+        print_path();
+        buffer = readline(NULL); // Récupère la commande entrée (allocation dynamique).
         if (buffer && *buffer) {
             add_history(buffer);
             argsComm[0] = strtok(buffer, " ");
             index = 1;
             while (1) { // Boucle sur les mots d'une commande.
-                if (index == wordsCapacity) { // Si une commande contient plus de wordsCapacity mots,
-                // allocation supplémentaire.
-                    wordsCapacity *= 2;
-                    argsComm = realloc(argsComm, wordsCapacity * sizeof(char*));
+                if (index == 15) {
+                    perror("Too many arguments");
+                    exit(EXIT_FAILURE);
                 }
-                //add_history(buffer);
+                add_history(buffer);
                 argsComm[index] = strtok(NULL, " ");
                 if (argsComm[index] == NULL) break;
                 ++index;
             }
             argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
             if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
-        }
+            }
     }
     // Libération de la mémoire après terminaison.
     free(buffer);
@@ -131,8 +129,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
     }
 }
 
-void reset(char** args, size_t len) {
-    for (int i = 0; i < len; i++) {
+void reset(char** args) {
+    for (int i = 0; i < 15; i++) {
         args[i] = NULL;
     }
 }
