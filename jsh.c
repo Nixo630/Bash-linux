@@ -15,6 +15,7 @@
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
+    // Initialisation variables globales
     previous_folder = pwd();
     current_folder = pwd();
     running = 1;
@@ -23,20 +24,30 @@ int main(int argc, char** argv) {
 
     main_loop();
     //printf("return value of jsh = %d\n",lastReturn);
+    free(previous_folder);
+    free(current_folder);
     return lastReturn;
 }
 
 void main_loop() {
+    // Initialisation buffers.
     char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
     size_t wordsCapacity = 15;
     char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
+    char* prompt;
+
+    // Paramétrage readline.
+    rl_outstream = stderr;
     using_history();
+
     // Boucle de récupération et de découpe des commandes.
     while (running) {
         reset(argsComm, wordsCapacity);
-        print_path(); // Affichage prompt.
-        buffer = readline(NULL); // Récupère la commande entrée.
+        prompt = getPrompt();
+        // print_path(); // Affichage prompt.
+        buffer = readline(prompt); // Récupère la commande entrée en affichant le prompt.
+        free(prompt);
         if (buffer && *buffer) {
             add_history(buffer);
             argsComm[0] = strtok(buffer, " ");
@@ -51,7 +62,7 @@ void main_loop() {
                 if (argsComm[index] == NULL) break;
                 ++index;
             }
-            argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
+            // argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
             if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
         }
     }
@@ -257,20 +268,21 @@ void exit_jsh(int val) {
     }
 }
 
-void print_path (){
-    fprintf(stderr,BLEU"[%d]",nbJobs);
-    // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..." 
-    if (strlen(current_folder) == 1) fprintf(stderr,NORMAL "~$ ");
-    else if (strlen(current_folder)<=25) fprintf(stderr,NORMAL "%s$ ", current_folder);
+char* getPrompt() {
+    char* prompt = malloc(sizeof(char)* 50);
+    if (strlen(current_folder) == 1) {
+        sprintf(prompt, BLEU"[%d]" NORMAL "~$ ", nbJobs);
+        return prompt;
+    }
+    else if (strlen(current_folder) <= 25) {
+        sprintf(prompt, BLEU"[%d]" NORMAL "%s$ ", nbJobs, current_folder);
+        return prompt;
+    }
     else{
-        char *path = malloc(sizeof(char)*27);
-        *path = '.';
-        *(path+1)= '.';
-        *(path+2) = '.';
-        for (int i = strlen(current_folder)-22; i <= strlen(current_folder); i++){
-            *(path+i-(strlen(current_folder)-25)) = *(current_folder+i);
-        }
-        fprintf(stderr,NORMAL "%s$ ", path);
+        char* path = malloc(sizeof(char)*(22+1));
+        strncpy(path, (current_folder + (strlen(current_folder)-22)), 22);
+        sprintf(prompt, BLEU"[%d]" NORMAL "...%s$ ", nbJobs, path);
         free(path);
+        return prompt;
     }
 }

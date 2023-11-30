@@ -8,6 +8,7 @@ void exit_jsh(int);
 int main(int argc, char** argv);
 void main_loop();
 void reset(char** args, size_t);
+char* getPrompt();
 
 bool running;
 int lastReturn;
