@@ -13,3 +13,4 @@ bool running;
 int lastReturn;
 int nbJobs;
 char* current_folder;
+char* previous_folder;

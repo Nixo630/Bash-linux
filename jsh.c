@@ -15,12 +15,14 @@
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
+    previous_folder = pwd();
     current_folder = pwd();
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
 
     main_loop();
+    //printf("return value of jsh = %d\n",lastReturn);
     return lastReturn;
 }
 
@@ -73,6 +75,9 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             }
             free(currentFolder);
         }
+        else if (strcmp(argsComm[1],"-") == 0) {
+            cd(previous_folder);
+        }
         else {
             cd(argsComm[1]);
         }
@@ -119,7 +124,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
     }
     else {
         argsComm[nbArgs] = "NULL";
-        external_command(argsComm);
+        lastReturn = external_command(argsComm);
     }
 }
 
@@ -185,18 +190,51 @@ int external_command(char** command) {
 }
 
 void cd (char* pathname) {
+    char* tmp = pwd();
     lastReturn = chdir(pathname);
     if (lastReturn == -1) {
         switch (errno) {
-            case (ENOENT) : fprintf(stderr,"cd : non-existent folder\n");break;
+            case (ENOENT) : {
+                char* currentFolder = pwd();
+                cd("..");
+                while(strcmp(currentFolder,pwd()) != 0) {
+                    currentFolder = pwd();
+                    cd("..");
+                }
+                free(currentFolder);
+                lastReturn = chdir(pathname);//we returned to the root and try again
+                if (lastReturn == -1) {
+                    if (errno == ENOENT) {
+                        cd(tmp);//if this doesn't work we return where we were
+                        fprintf(stderr,"cd : non-existent folder\n");break;
+                    }
+                    else {
+                        cd(tmp);//if this doesn't work we return where we were
+                    }
+                }
+                else {
+                    strcpy(previous_folder,tmp);
+                    char* tmp2 = pwd();
+                    strcpy(current_folder,tmp2);
+                    free(tmp2);
+                    break;
+                }
+            }
             case (EACCES) : fprintf(stderr,"cd : Access restricted\n");break;
             case (ENAMETOOLONG) : fprintf(stderr,"cd : Folder name too long\n");break;
             case (ENOTDIR) : fprintf(stderr,"cd : An element is not a dir\n");break;
             case (ENOMEM) : fprintf(stderr,"cd : Not enough memory for the core\n");break;
             default : fprintf(stderr,"Unknown error !\n");break;
         }
+        free(tmp);
     }
-    current_folder = pwd();
+    else {
+        strcpy(previous_folder,tmp);
+        free(tmp);
+        char* tmp2 = pwd();
+        strcpy(current_folder,tmp2);
+        free(tmp2);
+    }
 }
 
 int question_mark() {
