@@ -35,21 +35,24 @@ void main_loop() {
     size_t wordsCapacity = 15;
     char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
-    char* prompt;
 
     // Paramétrage readline.
     rl_outstream = stderr;
     using_history();
 
     // Boucle de récupération et de découpe des commandes.
-    rl_outstream = stderr;
     while (running) {
         reset(argsComm, wordsCapacity);
-        prompt = getPrompt();
-        // print_path(); // Affichage prompt.
-        buffer = readline(prompt); // Récupère la commande entrée en affichant le prompt.
-        free(prompt);
-        if (buffer && *buffer) {
+        char* tmp = getPrompt();
+        buffer = readline(tmp);// Récupère la commande entrée.
+        free(tmp);
+        if (buffer == NULL) {
+            exit(lastReturn);
+        } 
+        else if (strlen(buffer) == 0) {
+            continue;
+        }
+        else {
             add_history(buffer);
             argsComm[0] = strtok(buffer, " ");
             index = 1;
@@ -82,14 +85,9 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             fprintf(stderr,"bash : cd: too many arguments\n");
             lastReturn = -1;
         }
-        else if (argsComm[1] == NULL) {
-            char* currentFolder = pwd();
-            cd("..");
-            while(strcmp(currentFolder,pwd()) != 0) {
-                currentFolder = pwd();
-                cd("..");
-            }
-            free(currentFolder);
+        else if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
+            char* home = getenv("HOME");
+            cd(home);
         }
         else if (strcmp(argsComm[1],"-") == 0) {
             cd(previous_folder);
@@ -213,13 +211,8 @@ void cd (char* pathname) {
     if (lastReturn == -1) {
         switch (errno) {
             case (ENOENT) : {
-                char* currentFolder = pwd();
-                cd("..");
-                while(strcmp(currentFolder,pwd()) != 0) {
-                    currentFolder = pwd();
-                    cd("..");
-                }
-                free(currentFolder);
+                char* home = getenv("HOME");
+                cd(home);
                 lastReturn = chdir(pathname);//we returned to the root and try again
                 if (lastReturn == -1) {
                     if (errno == ENOENT) {

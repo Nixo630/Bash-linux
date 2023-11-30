@@ -2,7 +2,6 @@ char* pwd();
 int external_command(char** arguments);
 int question_mark();
 void callRightCommand(char**, unsigned);
-char* get_path();
 void cd(char*);
 void exit_jsh(int);
 int main(int argc, char** argv);
