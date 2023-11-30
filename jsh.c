@@ -245,7 +245,7 @@ int question_mark() {
 void exit_jsh(int val) {
     if (nbJobs > 0) {
         lastReturn = 1;
-        fprintf(stderr,"There is other jobs running");
+        fprintf(stderr,"There are other jobs running.");
         main_loop();
         running = 0;
     }
