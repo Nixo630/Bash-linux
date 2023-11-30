@@ -31,11 +31,13 @@ int main(int argc, char** argv) {
 }
 
 void main_loop() {
+
     // Initialisation buffers.
-    char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
-    size_t wordsCapacity = 15;
-    char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
-    unsigned index;
+    char* strCommand = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
+    size_t wordsCapacity = 15; // Capacité initiale de stockage d'arguments.
+    char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux (arguments)
+    // de la commande entrée.
+    unsigned index; // Compte le nombre d'arguments dans la commande entrée.
 
     // Paramétrage readline.
     rl_outstream = stderr;
@@ -44,19 +46,22 @@ void main_loop() {
     // Boucle de récupération et de découpe des commandes.
     while (running) {
         reset(argsComm, wordsCapacity);
+        free(strCommand);
+
         char* tmp = getPrompt();
-        free(buffer);
-        buffer = readline(tmp);// Récupère la commande entrée.
+        strCommand = readline(tmp); // Récupère la commande entrée en affichant le prompt.
         free(tmp);
-        if (buffer == NULL) {
+
+        if (strCommand == NULL) {
             exit(lastReturn);
         } 
-        else if (strlen(buffer) == 0) {
+        else if (strlen(strCommand) == 0) {
             continue;
         }
+
         else {
-            add_history(buffer);
-            argsComm[0] = strtok(buffer, " ");
+            add_history(strCommand);
+            argsComm[0] = strtok(strCommand, " ");
             index = 1;
             while (1) { // Boucle sur les mots d'une commande.
                 if (index == wordsCapacity) { // Si une commande contient plus de wordsCapacity mots,
@@ -72,66 +77,11 @@ void main_loop() {
             if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
         }
     }
-    // Libération de la mémoire après terminaison.
-    free(buffer);
+
+    // Libération de la mémoire allouée pour les buffers après terminaison.
+    free(strCommand);
     free(argsComm);
-    
 }
-
-
-// void main_loop() {
-
-//     // Initialisation buffers.
-//     char* strCommand = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
-//     size_t wordsCapacity = 15; // Capacité initiale de stockage d'arguments.
-//     char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux (arguments)
-//     // de la commande entrée.
-//     unsigned index; // Compte le nombre d'arguments dans la commande entrée.
-
-//     // Paramétrage readline.
-//     rl_outstream = stderr;
-//     using_history();
-
-//     // Boucle de récupération et de découpe des commandes.
-//     while (running) {
-//         reset(argsComm, wordsCapacity);
-//         free(strCommand);
-
-//         char* tmp = getPrompt();
-//         strCommand = readline(tmp); // Récupère la commande entrée en affichant le prompt.
-//         free(tmp);
-
-//         if (strCommand == NULL) {
-//             exit(lastReturn);
-//         } 
-//         else if (strlen(strCommand) == 0) {
-//             continue;
-//         }
-
-
-//         else {
-//             add_history(strCommand);
-//             argsComm[0] = strtok(strCommand, " ");
-//             index = 1;
-//             while (1) { // Boucle sur les mots d'une commande.
-//                 if (index == wordsCapacity) { // Si une commande contient plus de wordsCapacity mots,
-//                 // allocation supplémentaire.
-//                     wordsCapacity *= 2;
-//                     argsComm = realloc(argsComm, wordsCapacity * sizeof(char*));
-//                 }
-//                 argsComm[index] = strtok(NULL, " ");
-//                 if (argsComm[index] == NULL) break;
-//                 ++index;
-//             }
-//             // argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
-//             if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
-//         }
-//     }
-
-//     // Libération de la mémoire allouée pour les buffers après terminaison.
-//     free(strCommand);
-//     free(argsComm);
-// }
 
 // Nettoie les buffers de mots d'une commande.
 void reset(char** args, size_t len) {
@@ -140,125 +90,60 @@ void reset(char** args, size_t len) {
     }
 }
 
+
 // Exécute la bonne commande à partir des mots donnés en argument.
 void callRightCommand(char** argsComm, unsigned nbArgs) {
-    if (strcmp(argsComm[0], "cd") == 0) {
-        if (argsComm[2] != NULL) {
-            fprintf(stderr,"bash : cd: too many arguments\n");
-            lastReturn = -1;
-        }
-        else if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
-            char* home = getenv("HOME");
-            cd(home);
-        }
-        else if (strcmp(argsComm[1],"-") == 0) {
-            cd(previous_folder);
-        }
-        else {
-            cd(argsComm[1]);
-        }
-    }
-    else if (strcmp(argsComm[0], "pwd") == 0) {
-        if (argsComm[1] != NULL) {
-            fprintf(stderr,"bash : pwd: too many arguments\n");
-            lastReturn = -1;
-        }
-        else {
+    // Commande pwd
+    if (strcmp(argsComm[0], "pwd") == 0) {
+        if (correct_nbArgs(argsComm, 1, 1)) {
             char* folder = pwd();
             printf("%s\n",folder);
             free(folder);
         }
     }
-    else if (strcmp(argsComm[0], "exit") == 0) {
-        if (argsComm[2] != NULL) {
-            fprintf(stderr,"bash : exit: too many arguments\n");
-            lastReturn = -1;
-        }
-        else if (argsComm[1] == NULL) {
-            exit_jsh(lastReturn);
-        }
-        else {
-            char** tmp = malloc(sizeof(char)*50);
-            int int_args = strtol(argsComm[1],tmp,10);//base 10 and we store invalids arguments in tmp
-            if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
-                fprintf(stderr,"Exit takes an normal integer as argument\n");
+    // Commande cd
+    else if (strcmp(argsComm[0], "cd") == 0) {
+        if (correct_nbArgs(argsComm, 1, 2)) {
+            if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
+                char* home = getenv("HOME");
+                cd(home);
             }
-            else {
-                exit_jsh(int_args);
-            }
-            free(tmp);
+            else if (strcmp(argsComm[1],"-") == 0) cd(previous_folder);
+            else cd(argsComm[1]);
         }
     }
+    // Commande ?
     else if (strcmp(argsComm[0],"?") == 0) {
-        if (argsComm[1] != NULL) {
-            fprintf(stderr,"bash : ?: too many arguments");
-            lastReturn = -1;
-        }
-        else {
+        if (correct_nbArgs(argsComm, 1, 1)) {
             printf("%d\n",question_mark());
             lastReturn = 0;
         }
     }
+    // Commande exit
+    else if (strcmp(argsComm[0], "exit") == 0) {
+        if (correct_nbArgs(argsComm, 1, 2)) {
+            if (argsComm[1] == NULL) {
+                exit_jsh(lastReturn);
+            }
+            else {
+                char** tmp = malloc(sizeof(char)*50);
+                int int_args = strtol(argsComm[1],tmp,10);//base 10 and we store invalids arguments in tmp
+                if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
+                    fprintf(stderr,"Exit takes an normal integer as argument\n");
+                }
+                else {
+                    exit_jsh(int_args);
+                }
+                free(tmp);
+            }
+        }
+    }
+    // Commandes externes
     else {
         argsComm[nbArgs] = "NULL";
         lastReturn = external_command(argsComm);
     }
 }
-
-
-// // Exécute la bonne commande à partir des mots donnés en argument.
-// void callRightCommand(char** argsComm, unsigned nbArgs) {
-//     // Commande pwd
-//     if (strcmp(argsComm[0], "pwd") == 0) {
-//         if (correct_nbArgs(argsComm, 1, 1)) {
-//             char* folder = pwd();
-//             printf("%s\n",folder);
-//             free(folder);
-//         }
-//     }
-//     // Commande cd
-//     else if (strcmp(argsComm[0], "cd") == 0) {
-//         if (correct_nbArgs(argsComm, 1, 2)) {
-//             if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
-//                 char* home = getenv("HOME");
-//                 cd(home);
-//             }
-//             else if (strcmp(argsComm[1],"-") == 0) cd(previous_folder);
-//             else cd(argsComm[1]);
-//         }
-//     }
-//     // Commande ?
-//     else if (strcmp(argsComm[0],"?") == 0) {
-//         if (correct_nbArgs(argsComm, 1, 1)) {
-//             printf("%d\n",question_mark());
-//             lastReturn = 0;
-//         }
-//     }
-//     // Commande exit
-//     else if (strcmp(argsComm[0], "exit") == 0) {
-//         if (correct_nbArgs(argsComm, 1, 2)) {
-//             if (argsComm[1] == NULL) {
-//                 exit_jsh(lastReturn);
-//             }
-//             else {
-//                 char** tmp = malloc(sizeof(char)*50);
-//                 int int_args = strtol(argsComm[1],tmp,10);//base 10 and we store invalids arguments in tmp
-//                 if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
-//                     fprintf(stderr,"Exit takes an normal integer as argument\n");
-//                 }
-//                 else {
-//                     exit_jsh(int_args);
-//                 }
-//                 free(tmp);
-//             }
-//         }
-//     }
-//     // Commandes externes
-//     else {
-//         argsComm[nbArgs] = "NULL";
-//         lastReturn = external_command(argsComm);
-//     }
-// }
 
 // Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 // retourne false et affiche un message d'erreur sinon.
