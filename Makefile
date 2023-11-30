@@ -1,6 +1,6 @@
 EXEC = jsh
 
-jsh:
+build:
 		gcc -Wall -g -c *.c
 		gcc -o $(EXEC) *.o -lreadline
 
