@@ -297,7 +297,7 @@ char* getPrompt() {
     }
     else{
         char* path = malloc(sizeof(char)*(27));
-        strncpy(path, (current_folder + (strlen(current_folder)-(25 - l_nbJobs))), (22 - l_nbJobs));
+        strncpy(path, (current_folder + (strlen(current_folder)-(23 - l_nbJobs))), (25 - l_nbJobs));
         sprintf(prompt, BLEU"[%d]" NORMAL "...%s$ ", nbJobs, path);
         free(path);
     }
