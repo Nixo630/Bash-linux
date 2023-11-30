@@ -23,7 +23,8 @@ int main(int argc, char** argv) {
     nbJobs = 0;
 
     main_loop();
-    //printf("return value of jsh = %d\n",lastReturn);
+
+    // Libération des buffers
     free(previous_folder);
     free(current_folder);
     return lastReturn;
@@ -68,8 +69,6 @@ void main_loop() {
             }
             // argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
             if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
-            
-         
         }
     }
     // Libération de la mémoire après terminaison.
@@ -266,17 +265,7 @@ void exit_jsh(int val) {
     }
 }
 
-int length_jobs(){
-    int i = 1;
-    int x = nbJobs;
-    while (x>= 10){
-        i++;
-        x = x/10;
-    }
-    return i;
-}
-
-int length_nbJobs() {
+int length_nbJobs(){
     int i = 1;
     int x = nbJobs;
     while (x>= 10){
