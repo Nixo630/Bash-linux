@@ -46,7 +46,7 @@ void main_loop() {
         reset(argsComm, wordsCapacity);
         char* tmp = getPrompt();
         free(buffer);
-        buffer = readline(tmp);// Récupère la commande entrée.
+        buffer = readline(tmp); // Récupère la commande entrée en affichant le prompt.
         free(tmp);
         if (buffer == NULL) {
             exit(lastReturn);
@@ -143,6 +143,16 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
     }
 }
 
+void testNbArguments(char** argsComm, bool arg1, bool arg2) {
+    bool erreur = false;
+    if ((arg1 && strcmp(argsComm[1], "") == 0) || (!arg1 && strcmp(argsComm[1], "") != 0)) erreur = true;
+    if ((arg2 && strcmp(argsComm[2], "") == 0) || (!arg2 && strcmp(argsComm[2], "") != 0)) erreur = true;
+    if (erreur) {
+        fprintf(stderr,"bash : %s: too many arguments", argsComm[0]);
+        lastReturn = -1;
+    }
+}
+
 void reset(char** args, size_t len) {
     for (int i = 0; i < len; i++) {
         args[i] = NULL;
@@ -152,7 +162,7 @@ void reset(char** args, size_t len) {
 
 char* pwd () {
     lastReturn = -1;
-    int size = 30;;
+    int size = 30;
     char* buf = malloc(sizeof(char)*(size));
     if (buf == NULL) {
         fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
@@ -269,6 +279,8 @@ void exit_jsh(int val) {
     }
 }
 
+// Retourne le nombre de chiffres dans l'écriture en base 10 du nombre de jobs en cours
+// (pour l'affichage).
 int length_nbJobs(){
     int i = 1;
     int x = nbJobs;

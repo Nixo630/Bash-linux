@@ -8,6 +8,7 @@ int main(int argc, char** argv);
 void main_loop();
 void reset(char** args, size_t);
 char* getPrompt();
+void testNbArguments(char**);
 
 bool running;
 int lastReturn;
