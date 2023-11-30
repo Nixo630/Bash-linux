@@ -27,18 +27,25 @@ int main(int argc, char** argv) {
 }
 
 void main_loop() {
-    char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
+    char* buffer; // Stocke la commande entrée par l'utilisateur.
     size_t wordsCapacity = 15;
     char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
     using_history();
     // Boucle de récupération et de découpe des commandes.
+    rl_outstream = stderr;
     while (running) {
         reset(argsComm, wordsCapacity);
         char* tmp = get_path();
         buffer = readline(tmp);// Récupère la commande entrée.
         free(tmp);
-        if (buffer && *buffer) {
+        if (buffer == NULL) {
+            exit(lastReturn);
+        } 
+        else if (strlen(buffer) == 0) {
+            continue;
+        }
+        else {
             add_history(buffer);
             argsComm[0] = strtok(buffer, " ");
             index = 1;
@@ -73,7 +80,6 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             cd(home);
         }
         else if (strcmp(argsComm[1],"-") == 0) {
-            fprintf(stderr,"%s\n",previous_folder);
             cd(previous_folder);
         }
         else {
@@ -117,7 +123,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             lastReturn = -1;
         }
         else {
-            fprintf(stderr,"%d\n",question_mark());
+            printf("%d\n",question_mark());
+            lastReturn = 0;
         }
     }
     else {
@@ -196,7 +203,7 @@ void cd (char* pathname) {
             case (ENOENT) : {
                 char* home = getenv("HOME");
                 cd(home);
-                lastReturn = chdir(pathname);//we returned to the root and try again
+                chdir(pathname);//we returned to the root and try again
                 if (lastReturn == -1) {
                     if (errno == ENOENT) {
                         cd(tmp);//if this doesn't work we return where we were
@@ -220,6 +227,7 @@ void cd (char* pathname) {
             case (ENOMEM) : fprintf(stderr,"cd : Not enough memory for the core\n");break;
             default : fprintf(stderr,"Unknown error !\n");break;
         }
+        lastReturn = 1;
         free(tmp);
     }
     else {
