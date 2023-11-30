@@ -90,7 +90,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
         }
         else {
             char* folder = pwd();
-            fprintf(stderr,"%s\n",folder);
+            printf("%s\n",folder);
             free(folder);
         }
     }
@@ -259,14 +259,14 @@ void print_path (){
     fprintf(stderr,BLEU"[%d]",nbJobs);
     // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..." 
     if (strlen(current_folder) == 1) fprintf(stderr,NORMAL "~$ ");
-    else if (strlen(current_folder)<=30) fprintf(stderr,NORMAL "%s$ ", current_folder);
+    else if (strlen(current_folder)<=25) fprintf(stderr,NORMAL "%s$ ", current_folder);
     else{
-        char *path = malloc(sizeof(char)*(strlen(current_folder)));
+        char *path = malloc(sizeof(char)*27);
         *path = '.';
         *(path+1)= '.';
         *(path+2) = '.';
-        for (int i = strlen(current_folder)-30; i <= strlen(current_folder); i++){
-            *(path+i-(strlen(current_folder)-30)) = *(current_folder+i);
+        for (int i = strlen(current_folder)-22; i <= strlen(current_folder); i++){
+            *(path+i-(strlen(current_folder)-25)) = *(current_folder+i);
         }
         fprintf(stderr,NORMAL "%s$ ", path);
         free(path);
