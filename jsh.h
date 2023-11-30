@@ -4,10 +4,10 @@ int question_mark();
 void callRightCommand(char**, unsigned);
 void print_path();
 void cd(char*);
-void exit_jsh();
+void exit_jsh(int);
 int main(int argc, char** argv);
 void main_loop();
-void reset(char** args);
+void reset(char** args, size_t);
 
 bool running;
 int lastReturn;
