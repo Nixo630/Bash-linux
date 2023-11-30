@@ -291,17 +291,15 @@ char* getPrompt() {
     int l_nbJobs = length_nbJobs();
     if (strlen(current_folder) == 1) {
         sprintf(prompt, BLEU"[%d]" NORMAL "~$ ", nbJobs);
-        return prompt;
     }
     else if (strlen(current_folder) <= (26-l_nbJobs)) {
         sprintf(prompt, BLEU"[%d]" NORMAL "%s$ ", nbJobs, current_folder);
-        return prompt;
     }
     else{
-        char* path = malloc(sizeof(char)*(22+1));
-        strncpy(path, (current_folder + (strlen(current_folder)-(23 - l_nbJobs))), (23 - l_nbJobs));
+        char* path = malloc(sizeof(char)*(27));
+        strncpy(path, (current_folder + (strlen(current_folder)-(25 - l_nbJobs))), (22 - l_nbJobs));
         sprintf(prompt, BLEU"[%d]" NORMAL "...%s$ ", nbJobs, path);
         free(path);
-        return prompt;
     }
+    return prompt;
 }
