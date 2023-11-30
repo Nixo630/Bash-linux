@@ -36,22 +36,9 @@ void main_loop() {
     rl_outstream = stderr;
     while (running) {
         reset(argsComm, wordsCapacity);
-<<<<<<< jsh.c
-        char* tmp = get_path();
-        buffer = readline(tmp);// Récupère la commande entrée.
-        free(tmp);
-        if (buffer == NULL) {
-            exit(lastReturn);
-        } 
-        else if (strlen(buffer) == 0) {
-            continue;
-        }
-        else {
-=======
         print_path(); // Affichage prompt.
         buffer = readline(NULL); // Récupère la commande entrée.
         if (buffer && *buffer) {
->>>>>>> jsh.c
             add_history(buffer);
             argsComm[0] = strtok(buffer, " ");
             index = 1;
@@ -67,11 +54,14 @@ void main_loop() {
             }
             argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
             if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
+            
+         
         }
     }
     // Libération de la mémoire après terminaison.
     free(buffer);
     free(argsComm);
+    
 }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
@@ -212,11 +202,6 @@ void cd (char* pathname) {
     if (lastReturn == -1) {
         switch (errno) {
             case (ENOENT) : {
-<<<<<<< jsh.c
-                char* home = getenv("HOME");
-                cd(home);
-                chdir(pathname);//we returned to the root and try again
-=======
                 char* currentFolder = pwd();
                 cd("..");
                 while(strcmp(currentFolder,pwd()) != 0) {
@@ -225,7 +210,6 @@ void cd (char* pathname) {
                 }
                 free(currentFolder);
                 lastReturn = chdir(pathname);//we returned to the root and try again
->>>>>>> jsh.c
                 if (lastReturn == -1) {
                     if (errno == ENOENT) {
                         cd(tmp);//if this doesn't work we return where we were
@@ -279,7 +263,7 @@ void exit_jsh(int val) {
 }
 
 int length_jobs(){
-    int i = i;
+    int i = 1;
     int x = nbJobs;
     while (x>= 10){
         i++;
@@ -291,19 +275,21 @@ int length_jobs(){
 void print_path (){
     fprintf(stderr,BLEU"[%d]",nbJobs);
     int x = 30 - length_jobs() - 2 - 2;
+
     // length of 30 - length of nbJobs - length of "[]" - length of "$ "
     if (strlen(current_folder) == 1) fprintf(stderr,NORMAL "~$ ");
     else if (strlen(current_folder)<=(x)) fprintf(stderr,NORMAL "%s$ ", current_folder);
     else{
-        char *path = malloc(sizeof(char)*27);
+        char *path = malloc(sizeof(char)*(30-(30-x)));
         *path = '.';
         *(path+1)= '.';
         *(path+2) = '.';
         for (int i = strlen(current_folder)-x+3; i <= strlen(current_folder); i++){
             // x - length of "..."
-            *(path+i-x) = *(current_folder+i);
+            *(path+i-(strlen(current_folder)-x)) = *(current_folder+i);
+        
         }
         fprintf(stderr,NORMAL "%s$ ", path);
-        free(path);
+        
     }
 }
