@@ -268,19 +268,30 @@ void exit_jsh(int val) {
     }
 }
 
+int length_nbJobs() {
+    int i = 1;
+    int x = nbJobs;
+    while (x>= 10){
+        i++;
+        x = x/10;
+    }
+    return i;
+}
+
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
+    int l_nbJobs = length_nbJobs();
     if (strlen(current_folder) == 1) {
         sprintf(prompt, BLEU"[%d]" NORMAL "~$ ", nbJobs);
         return prompt;
     }
-    else if (strlen(current_folder) <= 25) {
+    else if (strlen(current_folder) <= (26-l_nbJobs)) {
         sprintf(prompt, BLEU"[%d]" NORMAL "%s$ ", nbJobs, current_folder);
         return prompt;
     }
     else{
         char* path = malloc(sizeof(char)*(22+1));
-        strncpy(path, (current_folder + (strlen(current_folder)-22)), 22);
+        strncpy(path, (current_folder + (strlen(current_folder)-(23 - l_nbJobs))), (23 - l_nbJobs));
         sprintf(prompt, BLEU"[%d]" NORMAL "...%s$ ", nbJobs, path);
         free(path);
         return prompt;
