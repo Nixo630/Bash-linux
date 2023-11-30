@@ -45,6 +45,7 @@ void main_loop() {
     while (running) {
         reset(argsComm, wordsCapacity);
         char* tmp = getPrompt();
+        free(buffer);
         buffer = readline(tmp);// Récupère la commande entrée.
         free(tmp);
         if (buffer == NULL) {
@@ -162,20 +163,23 @@ char* pwd () {
         fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
         exit(-1);
     }
-
+    free(returnValue);
     returnValue = getcwd(buf,size);
     while (returnValue == NULL && errno == ERANGE) {
         size++;
+        free(buf);
         buf = malloc(sizeof(char)*(size));
         if (buf == NULL) {
             fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
             exit(-1);
         }
+        free(returnValue);
         returnValue = malloc(sizeof(char)*(size));
         if (returnValue == NULL) {
             fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
             exit(-1);
         }
+        free(returnValue);
         returnValue = getcwd(buf,size);
     }
     if (returnValue == NULL) {
@@ -292,3 +296,13 @@ char* getPrompt() {
     }
     return prompt;
 }
+
+
+
+
+
+
+
+
+
+
