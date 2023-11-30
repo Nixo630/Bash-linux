@@ -36,6 +36,7 @@ void main_loop() {
     rl_outstream = stderr;
     while (running) {
         reset(argsComm, wordsCapacity);
+<<<<<<< jsh.c
         char* tmp = get_path();
         buffer = readline(tmp);// Récupère la commande entrée.
         free(tmp);
@@ -46,6 +47,11 @@ void main_loop() {
             continue;
         }
         else {
+=======
+        print_path(); // Affichage prompt.
+        buffer = readline(NULL); // Récupère la commande entrée.
+        if (buffer && *buffer) {
+>>>>>>> jsh.c
             add_history(buffer);
             argsComm[0] = strtok(buffer, " ");
             index = 1;
@@ -75,9 +81,14 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             fprintf(stderr,"bash : cd: too many arguments\n");
             lastReturn = -1;
         }
-        else if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
-            char* home = getenv("HOME");
-            cd(home);
+        else if (argsComm[1] == NULL) {
+            char* currentFolder = pwd();
+            cd("..");
+            while(strcmp(currentFolder,pwd()) != 0) {
+                currentFolder = pwd();
+                cd("..");
+            }
+            free(currentFolder);
         }
         else if (strcmp(argsComm[1],"-") == 0) {
             cd(previous_folder);
@@ -201,9 +212,20 @@ void cd (char* pathname) {
     if (lastReturn == -1) {
         switch (errno) {
             case (ENOENT) : {
+<<<<<<< jsh.c
                 char* home = getenv("HOME");
                 cd(home);
                 chdir(pathname);//we returned to the root and try again
+=======
+                char* currentFolder = pwd();
+                cd("..");
+                while(strcmp(currentFolder,pwd()) != 0) {
+                    currentFolder = pwd();
+                    cd("..");
+                }
+                free(currentFolder);
+                lastReturn = chdir(pathname);//we returned to the root and try again
+>>>>>>> jsh.c
                 if (lastReturn == -1) {
                     if (errno == ENOENT) {
                         cd(tmp);//if this doesn't work we return where we were
@@ -256,26 +278,32 @@ void exit_jsh(int val) {
     }
 }
 
-char* get_path (){
-    char* return_path = calloc(sizeof(char),50);
-    // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..."
+int length_jobs(){
+    int i = i;
+    int x = nbJobs;
+    while (x>= 10){
+        i++;
+        x = x/10;
+    }
+    return i;
+}
 
-    if (strlen(current_folder) == 1) {
-        sprintf(return_path,"\033[01;34m[%d]\033[00m~$ ",nbJobs);
-    }
-    else if (strlen(current_folder)<=25) {
-        sprintf(return_path,"\033[01;34m[%d]\033[00m%s$ ",nbJobs,current_folder);
-    }
+void print_path (){
+    fprintf(stderr,BLEU"[%d]",nbJobs);
+    int x = 30 - length_jobs() - 2 - 2;
+    // length of 30 - length of nbJobs - length of "[]" - length of "$ "
+    if (strlen(current_folder) == 1) fprintf(stderr,NORMAL "~$ ");
+    else if (strlen(current_folder)<=(x)) fprintf(stderr,NORMAL "%s$ ", current_folder);
     else{
         char *path = malloc(sizeof(char)*27);
         *path = '.';
         *(path+1)= '.';
         *(path+2) = '.';
-        for (int i = strlen(current_folder)-22; i <= strlen(current_folder); i++){
-            *(path+i-(strlen(current_folder)-25)) = *(current_folder+i);
+        for (int i = strlen(current_folder)-x+3; i <= strlen(current_folder); i++){
+            // x - length of "..."
+            *(path+i-x) = *(current_folder+i);
         }
-        sprintf(return_path,"\033[01;34m[%d]\033[00m%s$ ",nbJobs,path);
+        fprintf(stderr,NORMAL "%s$ ", path);
         free(path);
     }
-    return return_path;
 }
