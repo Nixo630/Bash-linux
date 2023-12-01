@@ -64,8 +64,8 @@ void main_loop() {
             argsComm[0] = strtok(strCommand, " ");
             index = 1;
             while (1) { // Boucle sur les mots d'une commande.
-                if (index == wordsCapacity) { // Si une commande contient plus de wordsCapacity mots,
-                // allocation supplémentaire.
+                if (index == wordsCapacity-1) { // Si une commande contient au moins wordsCapacity mots, (le
+                // dernier pointeur doit être laissé à NULL pour external_command): allocation supplémentaire.
                     wordsCapacity *= 2;
                     argsComm = realloc(argsComm, wordsCapacity * sizeof(char*));
                 }
@@ -73,8 +73,7 @@ void main_loop() {
                 if (argsComm[index] == NULL) break;
                 ++index;
             }
-            // argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
-            if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
+            if (argsComm[0] != NULL) callRightCommand(argsComm);
         }
     }
 
@@ -92,13 +91,13 @@ void reset(char** args, size_t len) {
 
 
 // Exécute la bonne commande à partir des mots donnés en argument.
-void callRightCommand(char** argsComm, unsigned nbArgs) {
+void callRightCommand(char** argsComm) {
     // Commande pwd
     if (strcmp(argsComm[0], "pwd") == 0) {
         if (correct_nbArgs(argsComm, 1, 1)) {
-            char* folder = pwd();
-            printf("%s\n",folder);
-            free(folder);
+            char* path = pwd();
+            printf("%s\n",path);
+            free(path);
         }
     }
     // Commande cd
@@ -140,7 +139,6 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
     }
     // Commandes externes
     else {
-        argsComm[nbArgs] = "NULL";
         lastReturn = external_command(argsComm);
     }
 }
@@ -160,42 +158,31 @@ bool correct_nbArgs(char** argsComm, unsigned min_nbArgs, unsigned max_nbArgs) {
     return correct_nb;
 }
 
+// Vérifie que le pointeur passé en argument est différent de NULL.
+void checkAlloc(void* ptr) {
+    if (ptr == NULL) {
+        fprintf(stderr,"ERROR IN MALLOC : NOT ENOUGH SPACE !");
+        exit(-1);
+    }
+}
 
-char* pwd () {
-    lastReturn = -1;
-    int size = 30;
-    char* buf = malloc(sizeof(char)*(size));
-    if (buf == NULL) {
-        fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-        exit(-1);
-    }
-    char* returnValue = malloc(sizeof(char)*(size));
-    if (returnValue == NULL) {
-        fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-        exit(-1);
-    }
-    free(returnValue);
-    returnValue = getcwd(buf,size);
-    while (returnValue == NULL && errno == ERANGE) {
-        size++;
-        free(buf);
-        buf = malloc(sizeof(char)*(size));
-        if (buf == NULL) {
-            fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-            exit(-1);
+char* pwd() {
+    unsigned size = 30;
+    char* buf = malloc(size * sizeof(char));
+    checkAlloc(buf);
+    while (getcwd(buf,size) == NULL) { // Tant que getwd produit une erreur.
+        if (errno == ERANGE) { // Si la taille de la string représentant le chemin est plus grande que
+        // size, on augmente size et on réalloue.
+            size *= 2;
+            buf = realloc(buf, size * sizeof(char));
+            checkAlloc(buf);
         }
-        free(returnValue);
-        returnValue = malloc(sizeof(char)*(size));
-        if (returnValue == NULL) {
-            fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-            exit(-1);
+        else { // Si l'erreur dans getwd n'est pas dûe à la taille du buffer passé en argument, 
+        // on affiche une erreur.
+            lastReturn = -1;
+            fprintf(stderr,"ERROR IN pwd");
+            return buf;
         }
-        free(returnValue);
-        returnValue = getcwd(buf,size);
-    }
-    if (returnValue == NULL) {
-        fprintf(stderr,"ERROR IN pwd");
-        return buf;
     }
     lastReturn = 0;
     return buf;
@@ -305,7 +292,7 @@ char* getPrompt() {
     }
     else{
         char* path = malloc(sizeof(char)*(27));
-        strncpy(path, (current_folder + (strlen(current_folder)-(23 - l_nbJobs))), (25 - l_nbJobs));
+        strncpy(path, (current_folder + (strlen(current_folder) - (23 - l_nbJobs))), (25 - l_nbJobs));
         sprintf(prompt, BLEU"[%d]" NORMAL "...%s$ ", nbJobs, path);
         free(path);
     }

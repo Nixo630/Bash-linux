@@ -9,9 +9,10 @@ int external_command(char** arguments);
 int main(int argc, char** argv);
 void main_loop();
 void reset(char** args, size_t);
-void callRightCommand(char**, unsigned);
+void callRightCommand(char**);
 bool correct_nbArgs(char**, unsigned, unsigned);
 char* getPrompt();
+void checkAlloc(void*);
 
 // Variables globales
 bool running;
