@@ -15,6 +15,7 @@
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
+    // Initialisation variables globales
     previous_folder = pwd();
     current_folder = pwd();
     running = 1;
@@ -22,21 +23,29 @@ int main(int argc, char** argv) {
     nbJobs = 0;
 
     main_loop();
-    //printf("return value of jsh = %d\n",lastReturn);
+
+    // Libération des buffers
+    free(previous_folder);
+    free(current_folder);
     return lastReturn;
 }
 
 void main_loop() {
-    char* buffer; // Stocke la commande entrée par l'utilisateur.
+    // Initialisation buffers.
+    char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
     size_t wordsCapacity = 15;
     char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
-    using_history();
-    // Boucle de récupération et de découpe des commandes.
+
+    // Paramétrage readline.
     rl_outstream = stderr;
+    using_history();
+
+    // Boucle de récupération et de découpe des commandes.
     while (running) {
         reset(argsComm, wordsCapacity);
-        char* tmp = get_path();
+        char* tmp = getPrompt();
+        free(buffer);
         buffer = readline(tmp);// Récupère la commande entrée.
         free(tmp);
         if (buffer == NULL) {
@@ -59,13 +68,14 @@ void main_loop() {
                 if (argsComm[index] == NULL) break;
                 ++index;
             }
-            argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
+            // argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
             if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
         }
     }
     // Libération de la mémoire après terminaison.
     free(buffer);
     free(argsComm);
+    
 }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
@@ -153,20 +163,23 @@ char* pwd () {
         fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
         exit(-1);
     }
-
+    free(returnValue);
     returnValue = getcwd(buf,size);
     while (returnValue == NULL && errno == ERANGE) {
         size++;
+        free(buf);
         buf = malloc(sizeof(char)*(size));
         if (buf == NULL) {
             fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
             exit(-1);
         }
+        free(returnValue);
         returnValue = malloc(sizeof(char)*(size));
         if (returnValue == NULL) {
             fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
             exit(-1);
         }
+        free(returnValue);
         returnValue = getcwd(buf,size);
     }
     if (returnValue == NULL) {
@@ -203,7 +216,7 @@ void cd (char* pathname) {
             case (ENOENT) : {
                 char* home = getenv("HOME");
                 cd(home);
-                chdir(pathname);//we returned to the root and try again
+                lastReturn = chdir(pathname);//we returned to the root and try again
                 if (lastReturn == -1) {
                     if (errno == ENOENT) {
                         cd(tmp);//if this doesn't work we return where we were
@@ -246,6 +259,8 @@ int question_mark() {
 void exit_jsh(int val) {
     if (nbJobs > 0) {
         lastReturn = 1;
+        char* tmp[] = {"clear","clear",NULL};
+        external_command(tmp);
         fprintf(stderr,"There are other jobs running.");
         main_loop();
         running = 0;
@@ -256,26 +271,30 @@ void exit_jsh(int val) {
     }
 }
 
-char* get_path (){
-    char* return_path = calloc(sizeof(char),50);
-    // size of the 30 char- size of "$ " - size of "[jobs]" - size of "..."
-
-    if (strlen(current_folder) == 1) {
-        sprintf(return_path,"\033[01;34m[%d]\033[00m~$ ",nbJobs);
+int length_nbJobs(){
+    int i = 1;
+    int x = nbJobs;
+    while (x>= 10){
+        i++;
+        x = x/10;
     }
-    else if (strlen(current_folder)<=25) {
-        sprintf(return_path,"\033[01;34m[%d]\033[00m%s$ ",nbJobs,current_folder);
+    return i;
+}
+
+char* getPrompt() {
+    char* prompt = malloc(sizeof(char)* 50);
+    int l_nbJobs = length_nbJobs();
+    if (strlen(current_folder) == 1) {
+        sprintf(prompt, BLEU"[%d]" NORMAL "~$ ", nbJobs);
+    }
+    else if (strlen(current_folder) <= (26-l_nbJobs)) {
+        sprintf(prompt, BLEU"[%d]" NORMAL "%s$ ", nbJobs, current_folder);
     }
     else{
-        char *path = malloc(sizeof(char)*27);
-        *path = '.';
-        *(path+1)= '.';
-        *(path+2) = '.';
-        for (int i = strlen(current_folder)-22; i <= strlen(current_folder); i++){
-            *(path+i-(strlen(current_folder)-25)) = *(current_folder+i);
-        }
-        sprintf(return_path,"\033[01;34m[%d]\033[00m%s$ ",nbJobs,path);
+        char* path = malloc(sizeof(char)*(27));
+        strncpy(path, (current_folder + (strlen(current_folder)-(23 - l_nbJobs))), (25 - l_nbJobs));
+        sprintf(prompt, BLEU"[%d]" NORMAL "...%s$ ", nbJobs, path);
         free(path);
     }
-    return return_path;
+    return prompt;
 }
