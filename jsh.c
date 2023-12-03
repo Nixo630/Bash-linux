@@ -9,6 +9,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <limits.h>
+#include <signal.h>
 #include "jsh.h"
 
 #define NORMAL "\033[00m"
@@ -21,12 +22,14 @@ int main(int argc, char** argv) {
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
+    l_jobs = malloc(sizeof(Job)*40);//maximum de 40 jobs simultanément
 
     main_loop();
 
     // Libération des buffers
     free(previous_folder);
     free(current_folder);
+    free(l_jobs);
     return lastReturn;
 }
 
@@ -36,6 +39,7 @@ void main_loop() {
     size_t wordsCapacity = 15;
     char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
     unsigned index;
+    char* command = (char*)NULL;
 
     // Paramétrage readline.
     rl_outstream = stderr;
@@ -47,6 +51,8 @@ void main_loop() {
         char* tmp = getPrompt();
         free(buffer);
         buffer = readline(tmp);// Récupère la commande entrée.
+        command = malloc(sizeof(char)*strlen(buffer));
+        strcpy(command,buffer);
         free(tmp);
         if (buffer == NULL) {
             exit(lastReturn);
@@ -69,7 +75,7 @@ void main_loop() {
                 ++index;
             }
             // argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
-            if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index+1);
+            if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index, command);//dans la commande jobs on a besoin du buffer
         }
     }
     // Libération de la mémoire après terminaison.
@@ -79,7 +85,7 @@ void main_loop() {
 }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
-void callRightCommand(char** argsComm, unsigned nbArgs) {
+void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     if (strcmp(argsComm[0], "cd") == 0) {
         if (argsComm[2] != NULL) {
             fprintf(stderr,"bash : cd: too many arguments\n");
@@ -119,7 +125,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             char** tmp = malloc(sizeof(char)*50);
             int int_args = strtol(argsComm[1],tmp,10);//base 10 and we store invalids arguments in tmp
             if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
-                fprintf(stderr,"Exit takes an normal integer as argument\n");
+                fprintf(stderr,"Exit takes a normal integer as argument\n");
             }
             else {
                 exit_jsh(int_args);
@@ -137,9 +143,24 @@ void callRightCommand(char** argsComm, unsigned nbArgs) {
             lastReturn = 0;
         }
     }
+    else if (strcmp(argsComm[0],"jobs") == 0) {
+        if (argsComm[1] != NULL) {//pour le deuxieme jalon pas besoin d'arguments a jobs
+            fprintf(stderr,"bash : jobs: too many arguments");
+            lastReturn = -1;
+        }
+        else {
+            print_jobs();
+            lastReturn = 0;
+        }
+    }
     else {
-        argsComm[nbArgs] = "NULL";
-        lastReturn = external_command(argsComm);
+        if (strcmp(argsComm[nbArgs-1],"&") == 0) {
+            argsComm[nbArgs-1] = NULL;
+            lastReturn = external_command(argsComm,true,buffer);
+        }
+        else {
+            lastReturn = external_command(argsComm,false,buffer);
+        }
     }
 }
 
@@ -148,7 +169,6 @@ void reset(char** args, size_t len) {
         args[i] = NULL;
     }
 }
-
 
 char* pwd () {
     lastReturn = -1;
@@ -193,8 +213,8 @@ char* pwd () {
 /*
 This function returns the error of execvp and is exuting the command "command_name" with the arguments "arguments".
 */
-int external_command(char** command) {
-    pid_t pid = fork();
+int external_command(char** command, bool create_new_job, char* buffer) {
+    int pid = fork();
 
     if (pid == 0) {
         int tmp = execvp(command[0],command);
@@ -203,7 +223,31 @@ int external_command(char** command) {
     }
     else {
         int status;
-        waitpid(pid,&status,0);
+        if (!create_new_job) {
+            waitpid(pid,&status,0);
+        }
+        else {
+            if (nbJobs == 40) {
+                fprintf(stderr,"Too much jobs running simultaneously");
+            }
+            else {
+                nbJobs++;
+                char* command_name = malloc(sizeof(char)*strlen(buffer));
+                strcpy(command_name,buffer);
+                int i = strlen(command_name)-1;
+                while (true) {//supprimer le & a la fin de la commande
+                    if (*(command_name+i) == '&') {
+                        *(command_name+i) = ' ';
+                        break;
+                    }
+                    *(command_name+i) = ' ';
+                    i--;
+                }
+                Job tmp = {nbJobs, pid, "Running",command_name};
+                l_jobs[nbJobs-1] = tmp;
+                fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+            }
+        }
         return WEXITSTATUS(status);//return the exit value of the son
     }
 }
@@ -260,7 +304,7 @@ void exit_jsh(int val) {
     if (nbJobs > 0) {
         lastReturn = 1;
         char* tmp[] = {"clear","clear",NULL};
-        external_command(tmp);
+        external_command(tmp,false,"clear");
         fprintf(stderr,"There are other jobs running.");
         main_loop();
         running = 0;
@@ -268,6 +312,16 @@ void exit_jsh(int val) {
     else {
         lastReturn = val;
         running = 0;
+    }
+}
+
+void print_job(Job job) {
+    fprintf(stderr,"[%d] %d %s %s\n",job.nJob,job.pid,job.state,job.command_name);
+}
+
+void print_jobs() {
+    for (int i = 0; i < nbJobs; i++) {
+        print_job(l_jobs[i]);
     }
 }
 
@@ -284,6 +338,15 @@ int length_nbJobs(){
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
     int l_nbJobs = length_nbJobs();
+    for (int i = 0; i < nbJobs; i++) {
+        if (WIFEXITED(l_jobs[i].pid)) {
+            kill(l_jobs[i].pid,SIGKILL);
+            l_jobs[i].state = "Done";
+            print_job(l_jobs[i]);
+            nbJobs--;
+            //fonction pour tout decaler d'une case
+        }
+    }
     if (strlen(current_folder) == 1) {
         sprintf(prompt, BLEU"[%d]" NORMAL "~$ ", nbJobs);
     }
