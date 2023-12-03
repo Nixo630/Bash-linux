@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
     free(previous_folder);
     free(current_folder);
     free(l_jobs);
+
     return lastReturn;
 }
 
@@ -38,10 +39,8 @@ void main_loop() {
     // Initialisation buffers.
     char* strCommand = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
     size_t wordsCapacity = 15; // Capacité initiale de stockage d'arguments.
-    char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux (arguments)
-    // de la commande entrée.
+    char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
     unsigned index; // Compte le nombre d'arguments dans la commande entrée.
-    char* command = (char*)NULL;
 
     // Paramétrage readline.
     rl_outstream = stderr;
@@ -49,13 +48,14 @@ void main_loop() {
 
     // Boucle de récupération et de découpe des commandes.
     while (running) {
+
+        // Nettoyage buffers.
         reset(argsComm, wordsCapacity);
         free(strCommand);
 
+        // Récupération de la commande entrée et affichage du prompt.
         char* tmp = getPrompt();
-        strCommand = readline(tmp); // Récupère la commande entrée en affichant le prompt.
-        command = malloc(sizeof(char)*strlen(buffer));
-        strcpy(command,buffer);
+        strCommand = readline(tmp);
         free(tmp);
 
         if (strCommand == NULL) {
@@ -65,6 +65,7 @@ void main_loop() {
             continue;
         }
 
+        // Découpe de la commande entrée.
         else {
             add_history(strCommand);
             argsComm[0] = strtok(strCommand, " ");
@@ -79,14 +80,13 @@ void main_loop() {
                 if (argsComm[index] == NULL) break;
                 ++index;
             }
-            if (argsComm[0] != NULL) callRightCommand(argsComm, index, command); //dans la commande jobs on a besoin du buffer
+            if (argsComm[0] != NULL) callRightCommand(argsComm, index, strCommand); //dans la commande jobs on a besoin du buffer
         }
     }
 
     // Libération de la mémoire allouée pour les buffers après terminaison.
     free(strCommand);
     free(argsComm);
-    
 }
 
 // Nettoie les buffers de mots d'une commande.
@@ -98,7 +98,7 @@ void reset(char** args, size_t len) {
 
 
 // Exécute la bonne commande à partir des mots donnés en argument.
-void callRightCommand(char** argsComm) {
+void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     // Commande pwd
     if (strcmp(argsComm[0], "pwd") == 0) {
         if (correct_nbArgs(argsComm, 1, 1)) {
