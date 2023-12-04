@@ -125,15 +125,13 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
             exit_jsh(lastReturn);
         }
         else {
-            char** tmp = malloc(sizeof(char)*50);
-            int int_args = strtol(argsComm[1],tmp,10);//base 10 and we store invalids arguments in tmp
-            if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
+            int int_args = convert_str_to_int(argsComm[1]);
+            if (int_args == INT_MIN) {//we check the second argument doesn't contain some chars
                 fprintf(stderr,"Exit takes a normal integer as argument\n");
             }
             else {
                 exit_jsh(int_args);
             }
-            free(tmp);
         }
     }
     else if (strcmp(argsComm[0],"?") == 0) {
@@ -156,8 +154,23 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
             lastReturn = 0;
         }
     }
+    else if (strcmp(argsComm[0],"kill") == 0) {
+        if (argsComm[3] != NULL) {
+            fprintf(stderr,"bash : jobs: too many arguments");
+            lastReturn = -1;
+        }
+        else {
+            lastReturn = killJob(argsComm[1],argsComm[2]);
+            if (lastReturn == -1) {
+                perror(NULL);
+            }
+        }
+    }
     else {
-        if (strcmp(argsComm[nbArgs-1],"&") == 0) {
+        if (strcmp(argsComm[nbArgs-1],"&") == 0 && nbArgs-1 == 0) {
+            fprintf(stderr,"Wrong command name\n");
+        }
+        else if (strcmp(argsComm[nbArgs-1],"&") == 0) {
             argsComm[nbArgs-1] = NULL;
             lastReturn = external_command(argsComm,true,buffer);
         }
@@ -165,6 +178,17 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
             lastReturn = external_command(argsComm,false,buffer);
         }
     }
+}
+
+int convert_str_to_int (char* string) {
+    char** tmp = malloc(sizeof(char)*50);
+    int int_args = strtol(string,tmp,10);//base 10 and we store invalids arguments in tmp
+    if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
+        fprintf(stderr,"Exit takes a normal integer as argument\n");
+        return INT_MIN;
+    }
+    free(tmp);
+    return int_args;
 }
 
 void reset(char** args, size_t len) {
@@ -367,6 +391,34 @@ void removeJob (int n) {
     }
 }
 
+int killJob (char* sig, char* pid) {
+    int sig2 = convert_str_to_int(sig);
+    if (sig2 == INT_MIN) {
+        fprintf(stderr,"wrong command");
+        return -2;
+    }
+    int pid2 = convert_str_to_int(pid);
+    if (pid2 == INT_MIN) {
+        fprintf(stderr,"wrong command");
+        return -2;
+    }
+    int returnValue = kill(pid2,sig2);
+    if (returnValue == 0 && sig2 == 9) {
+        int i = 0;
+        while (l_jobs[i].pid == pid2) {
+            i++;
+        }
+        free(l_jobs[i].state);
+        char* state = malloc(sizeof(char)*11);
+        strcpy(state,"Terminated");
+        l_jobs[i].state = state;
+        print_job(l_jobs[i]);
+        removeJob(i);
+        nbJobs--;
+    }
+    return returnValue;
+}
+
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
     int l_nbJobs = length_nbJobs();
@@ -384,19 +436,27 @@ char* getPrompt() {
                 nbJobs--;
             }
             else if (WIFSTOPPED(status)) {
+                free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*8);
                 strcpy(state,"Stopped");
                 l_jobs[i].state = state;
                 print_job(l_jobs[i]);
             }
             else if (WIFCONTINUED(status)) {
+                free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*10);
                 strcpy(state,"Continued");
                 l_jobs[i].state = state;
                 print_job(l_jobs[i]);
             }
-            else {
-                continue;
+            else if (WIFSIGNALED(status)) {
+                free(l_jobs[i].state);
+                char* state = malloc(sizeof(char)*11);
+                strcpy(state,"Terminated");
+                l_jobs[i].state = state;
+                print_job(l_jobs[i]);
+                removeJob(i);
+                nbJobs--;
             }
         }
     }

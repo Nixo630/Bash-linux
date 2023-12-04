@@ -19,8 +19,9 @@ void main_loop();
 void reset(char** args, size_t len);
 void print_job(Job job);
 void print_jobs();
-void copy(char* dest, char* src);
 void removeJob (int n);
+int killJob (char* sig, char* pid);
+int convert_str_to_int (char* string);
 
 bool running;
 int lastReturn;
