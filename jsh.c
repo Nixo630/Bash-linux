@@ -30,6 +30,9 @@ int main(int argc, char** argv) {
     free(previous_folder);
     free(current_folder);
     free(l_jobs);
+    for (int i = 0; i < nbJobs; i++) {
+        kill(l_jobs[i].pid,SIGKILL);
+    }
     return lastReturn;
 }
 
@@ -214,11 +217,14 @@ char* pwd () {
 This function returns the error of execvp and is exuting the command "command_name" with the arguments "arguments".
 */
 int external_command(char** command, bool create_new_job, char* buffer) {
-    int pid = fork();
+    pid_t pid = fork();
 
     if (pid == 0) {
-        int tmp = execvp(command[0],command);
-        fprintf(stderr,"Wrong command name\n");
+        int tmp;
+        if (nbJobs < 40) {
+            tmp = execvp(command[0],command);
+            fprintf(stderr,"Wrong command name\n");
+        }
         exit(tmp);
     }
     else {
@@ -227,8 +233,18 @@ int external_command(char** command, bool create_new_job, char* buffer) {
             waitpid(pid,&status,0);
         }
         else {
+            sleep(1);
+            int status;
+            pid_t state = waitpid(pid,&status,WNOHANG);
             if (nbJobs == 40) {
-                fprintf(stderr,"Too much jobs running simultaneously");
+                fprintf(stderr,"Too much jobs running simultaneously\n");
+                return -1;
+            }
+            else if (state != 0) {
+                if (WIFEXITED(status)) {//si le fils s'est terminé normalement c'est qu'en parametre il y avait une fonction instantané
+                    fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+                }
+                return -1;
             }
             else {
                 nbJobs++;
@@ -243,9 +259,12 @@ int external_command(char** command, bool create_new_job, char* buffer) {
                     *(command_name+i) = ' ';
                     i--;
                 }
-                Job tmp = {nbJobs, pid, "Running",command_name};
+                char* state = malloc(sizeof(char)*8);
+                strcpy(state,"Running");
+                Job tmp = {nbJobs, pid, state, command_name};
                 l_jobs[nbJobs-1] = tmp;
                 fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+                return 0;
             }
         }
         return WEXITSTATUS(status);//return the exit value of the son
@@ -303,10 +322,10 @@ int question_mark() {
 void exit_jsh(int val) {
     if (nbJobs > 0) {
         lastReturn = 1;
-        char* tmp[] = {"clear","clear",NULL};
-        external_command(tmp,false,"clear");
-        fprintf(stderr,"There are other jobs running.");
-        main_loop();
+        //char* tmp[] = {"clear",NULL};
+        //external_command(tmp,false,"clear");
+        fprintf(stderr,"There are other jobs running.\n");
+        //main_loop();
         running = 0;
     }
     else {
@@ -321,11 +340,14 @@ void print_job(Job job) {
 
 void print_jobs() {
     for (int i = 0; i < nbJobs; i++) {
-        print_job(l_jobs[i]);
+        if (l_jobs[i].pid != 0) {
+            //write(STDOUT_FILENO,"bonjour",7);
+            print_job(l_jobs[i]);
+        }
     }
 }
 
-int length_nbJobs(){
+int length_nbJobs() {
     int i = 1;
     int x = nbJobs;
     while (x>= 10){
@@ -335,16 +357,47 @@ int length_nbJobs(){
     return i;
 }
 
+void removeJob (int n) {
+    l_jobs[n].nJob = 0;
+    l_jobs[n].pid = 0;
+    free(l_jobs[n].state);
+    free(l_jobs[n].command_name);
+    for (int i = n; i < nbJobs; i++) {
+        l_jobs[i] = l_jobs[i+1];
+    }
+}
+
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
     int l_nbJobs = length_nbJobs();
+    int status;
     for (int i = 0; i < nbJobs; i++) {
-        if (WIFEXITED(l_jobs[i].pid)) {
-            kill(l_jobs[i].pid,SIGKILL);
-            l_jobs[i].state = "Done";
-            print_job(l_jobs[i]);
-            nbJobs--;
-            //fonction pour tout decaler d'une case
+        if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0) {
+            if (WIFEXITED(status)) {
+                kill(l_jobs[i].pid,SIGKILL);
+                free(l_jobs[i].state);
+                char* state = malloc(sizeof(char)*5);
+                strcpy(state,"Done");
+                l_jobs[i].state = state;
+                print_job(l_jobs[i]);
+                removeJob(i);
+                nbJobs--;
+            }
+            else if (WIFSTOPPED(status)) {
+                char* state = malloc(sizeof(char)*8);
+                strcpy(state,"Stopped");
+                l_jobs[i].state = state;
+                print_job(l_jobs[i]);
+            }
+            else if (WIFCONTINUED(status)) {
+                char* state = malloc(sizeof(char)*10);
+                strcpy(state,"Continued");
+                l_jobs[i].state = state;
+                print_job(l_jobs[i]);
+            }
+            else {
+                continue;
+            }
         }
     }
     if (strlen(current_folder) == 1) {

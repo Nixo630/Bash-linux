@@ -2,7 +2,7 @@ typedef struct Job Job;
 struct Job
 {
     int nJob;
-    int pid;
+    pid_t pid;
     char* state;
     char* command_name;
 };
@@ -20,6 +20,7 @@ void reset(char** args, size_t len);
 void print_job(Job job);
 void print_jobs();
 void copy(char* dest, char* src);
+void removeJob (int n);
 
 bool running;
 int lastReturn;
