@@ -10,6 +10,9 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <signal.h>
+#include "toolbox_jsh.h"
+#include "parsing_jsh.h"
+#include "jobs_jsh.h"
 #include "jsh.h"
 
 #define NORMAL "\033[00m"
@@ -37,65 +40,41 @@ int main(int argc, char** argv) {
 }
 
 void main_loop() {
-
     // Initialisation buffers.
     char* strCommand = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
-    size_t wordsCapacity = 15; // Capacité initiale de stockage d'arguments.
-    char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
+    char** argsComm = malloc(32 * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
+    size_t* argsCapacity = malloc(sizeof(size_t));
+    *argsCapacity = 32; // Capacité initiale de stockage d'arguments.
     unsigned index; // Compte le nombre d'arguments dans la commande entrée.
-
     // Paramétrage readline.
     rl_outstream = stderr;
     using_history();
-
     // Boucle de récupération et de découpe des commandes.
     while (running) {
-
         // Nettoyage buffers.
-        reset(argsComm, wordsCapacity);
+        reset(argsComm, argsCapacity);
         free(strCommand);
-
         // Récupération de la commande entrée et affichage du prompt.
         char* tmp = getPrompt();
         strCommand = readline(tmp);
         free(tmp);
-
+        // Tests commande non vide.
         if (strCommand == NULL) {
             exit(lastReturn);
         } 
         else if (strlen(strCommand) == 0) {
             continue;
         }
-
-        // Découpe de la commande entrée.
+        // Traitement de la commande entrée.
         else {
             add_history(strCommand);
-            argsComm[0] = strtok(strCommand, " ");
-            index = 1;
-            while (1) { // Boucle sur les mots d'une commande.
-                if (index == wordsCapacity-1) { // Si une commande contient au moins wordsCapacity mots, (le
-                // dernier pointeur doit être laissé à NULL pour external_command): allocation supplémentaire.
-                    wordsCapacity *= 2;
-                    argsComm = realloc(argsComm, wordsCapacity * sizeof(char*));
-                }
-                argsComm[index] = strtok(NULL, " ");
-                if (argsComm[index] == NULL) break;
-                ++index;
-            }
-            if (argsComm[0] != NULL) callRightCommand(argsComm, index, strCommand); //dans la commande jobs on a besoin du buffer
+            index = parse_command(strCommand, argsComm, argsCapacity); // Découpage de la commande.
+            callRightCommand(argsComm, index, strCommand); //dans la commande jobs on a besoin du buffer
         }
     }
-
     // Libération de la mémoire allouée pour les buffers après terminaison.
     free(strCommand);
     free(argsComm);
-}
-
-// Nettoie les buffers de mots d'une commande.
-void reset(char** args, size_t len) {
-    for (int i = 0; i < len; i++) {
-        args[i] = NULL;
-    }
 }
 
 
@@ -136,11 +115,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     }
     // Commande kill
     else if (strcmp(argsComm[0],"kill") == 0) {
-        if (argsComm[3] != NULL) {
-            fprintf(stderr,"bash : jobs: too many arguments");
-            lastReturn = -1;
-        }
-        else {
+        if (correct_nbArgs(argsComm, 2, 3)) {
             lastReturn = killJob(argsComm[1],argsComm[2]);
             if (lastReturn == -1) {
                 perror(NULL);
@@ -194,31 +169,6 @@ bool correct_nbArgs(char** argsComm, unsigned min_nbArgs, unsigned max_nbArgs) {
     return correct_nb;
 }
 
-// Vérifie que le pointeur passé en argument est différent de NULL.
-void checkAlloc(void* ptr) {
-    if (ptr == NULL) {
-        fprintf(stderr,"ERROR IN MALLOC : NOT ENOUGH SPACE !");
-        exit(-1);
-    }
-}
-
-int convert_str_to_int (char* string) {
-    char** tmp = malloc(sizeof(char)*50);
-    int int_args = strtol(string,tmp,10);//base 10 and we store invalids arguments in tmp
-    if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
-        fprintf(stderr,"Exit takes a normal integer as argument\n");
-        return INT_MIN;
-    }
-    free(tmp);
-    return int_args;
-}
-
-void reset(char** args, size_t len) {
-    for (int i = 0; i < len; i++) {
-        args[i] = NULL;
-    }
-}
-
 char* pwd() {
     unsigned size = 30;
     char* buf = malloc(size * sizeof(char));
@@ -248,7 +198,7 @@ int external_command(char** command, bool create_new_job, char* buffer) {
     pid_t pid = fork();
 
     if (pid == 0) {
-        int tmp;
+        int tmp = 0;
         if (nbJobs < 40) {
             tmp = execvp(command[0],command);
             fprintf(stderr,"Wrong command name\n");
@@ -362,70 +312,9 @@ void exit_jsh(int val) {
     }
 }
 
-void print_job(Job job) {
-    fprintf(stderr,"[%d] %d %s %s\n",job.nJob,job.pid,job.state,job.command_name);
-}
-
-void print_jobs() {
-    for (int i = 0; i < nbJobs; i++) {
-        if (l_jobs[i].pid != 0) {
-            //write(STDOUT_FILENO,"bonjour",7);
-            print_job(l_jobs[i]);
-        }
-    }
-}
-
-int length_nbJobs() {
-    int i = 1;
-    int x = nbJobs;
-    while (x>= 10){
-        i++;
-        x = x/10;
-    }
-    return i;
-}
-
-void removeJob (int n) {
-    l_jobs[n].nJob = 0;
-    l_jobs[n].pid = 0;
-    free(l_jobs[n].state);
-    free(l_jobs[n].command_name);
-    for (int i = n; i < nbJobs; i++) {
-        l_jobs[i] = l_jobs[i+1];
-    }
-}
-
-int killJob (char* sig, char* pid) {
-    int sig2 = convert_str_to_int(sig);
-    if (sig2 == INT_MIN) {
-        fprintf(stderr,"wrong command");
-        return -2;
-    }
-    int pid2 = convert_str_to_int(pid);
-    if (pid2 == INT_MIN) {
-        fprintf(stderr,"wrong command");
-        return -2;
-    }
-    int returnValue = kill(pid2,sig2);
-    if (returnValue == 0 && sig2 == 9) {
-        int i = 0;
-        while (l_jobs[i].pid == pid2) {
-            i++;
-        }
-        free(l_jobs[i].state);
-        char* state = malloc(sizeof(char)*11);
-        strcpy(state,"Terminated");
-        l_jobs[i].state = state;
-        print_job(l_jobs[i]);
-        removeJob(i);
-        nbJobs--;
-    }
-    return returnValue;
-}
-
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
-    int l_nbJobs = length_nbJobs();
+    int l_nbJobs = length_base10(nbJobs);
     int status;
     for (int i = 0; i < nbJobs; i++) {
         if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0) {
