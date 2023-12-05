@@ -1,7 +1,7 @@
 // Structures
 struct Job {
     int nJob;
-    int pid;
+    pid_t pid;
     char* state;
     char* command_name;
 };
@@ -25,6 +25,9 @@ void callRightCommand(char**argsComm, unsigned nbArgs, char* buffer);
 bool correct_nbArgs(char**, unsigned, unsigned);
 char* getPrompt();
 void checkAlloc(void*);
+void removeJob (int n);
+int killJob (char* sig, char* pid);
+int convert_str_to_int (char* string);
 
 // Variables globales
 bool running;
