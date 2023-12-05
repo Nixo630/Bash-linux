@@ -42,9 +42,9 @@ int main(int argc, char** argv) {
 void main_loop() {
     // Initialisation buffers.
     char* strCommand = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
-    char** argsComm = malloc(32 * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
-    size_t* argsCapacity = malloc(sizeof(size_t));
-    *argsCapacity = 32; // Capacité initiale de stockage d'arguments.
+    size_t* argsCapacity = malloc(sizeof(size_t)); // Taille du tableau récupérant les arguments d'une commande.
+    (*argsCapacity) = STARTING_ARGS_CAPACITY; // Est augmentée si nécessaire par parse_command.
+    char** argsComm = malloc((*argsCapacity) * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
     unsigned index; // Compte le nombre d'arguments dans la commande entrée.
     // Paramétrage readline.
     rl_outstream = stderr;
@@ -154,8 +154,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     }
 }
 
-// Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
-// retourne false et affiche un message d'erreur sinon.
+/* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
+affiche un message d'erreur et retoure false sinon. */
 bool correct_nbArgs(char** argsComm, unsigned min_nbArgs, unsigned max_nbArgs) {
     bool correct_nb = true;
     if (argsComm[min_nbArgs-1] == NULL) {
@@ -174,14 +174,14 @@ char* pwd() {
     char* buf = malloc(size * sizeof(char));
     checkAlloc(buf);
     while (getcwd(buf,size) == NULL) { // Tant que getwd produit une erreur.
-        if (errno == ERANGE) { // Si la taille de la string représentant le chemin est plus grande que
-        // size, on augmente size et on réalloue.
+        if (errno == ERANGE) { /* Si la taille de la string représentant le chemin est plus grande que
+        size, on augmente size et on réalloue. */
             size *= 2;
             buf = realloc(buf, size * sizeof(char));
             checkAlloc(buf);
         }
-        else { // Si l'erreur dans getwd n'est pas dûe à la taille du buffer passé en argument, 
-        // on affiche une erreur.
+        else { /* Si l'erreur dans getwd n'est pas dûe à la taille du buffer passé en argument, 
+        on affiche une erreur. */
             lastReturn = -1;
             fprintf(stderr,"ERROR IN pwd");
             return buf;
@@ -354,7 +354,7 @@ char* getPrompt() {
         }
     }
     if (strlen(current_folder) == 1) {
-        sprintf(prompt, BLEU"[%d]" NORMAL "~$ ", nbJobs);
+        sprintf(prompt, BLEU"[%d]" NORMAL "c$ ", nbJobs);
     }
     else if (strlen(current_folder) <= (26-l_nbJobs)) {
         sprintf(prompt, BLEU"[%d]" NORMAL "%s$ ", nbJobs, current_folder);
