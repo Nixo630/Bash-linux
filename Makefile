@@ -1,9 +1,10 @@
+CC = gcc
+CFLAGS = -Wall
 EXEC = jsh
 
 build:
-		gcc -Wall -g -c *.c
-		gcc -o $(EXEC) *.o -lreadline
+	$(CC) -g $(CFLAGS) -c *.c
+	$(CC) -g $(CFLAGS) -o $(EXEC) *.o -lreadline
 
 clean:
-		rm -f *.o
-		rm -f $(EXEC)
+	rm -f *.o $(EXEC)

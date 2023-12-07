@@ -10,6 +10,9 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <signal.h>
+#include "toolbox_jsh.h"
+#include "parsing_jsh.h"
+#include "jobs_jsh.h"
 #include "jsh.h"
 
 #define NORMAL "\033[00m"
@@ -22,9 +25,9 @@ int main(int argc, char** argv) {
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
-    l_jobs = malloc(sizeof(Job)*40);//maximum de 40 jobs simultanément
+    l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément
 
-    main_loop();
+    main_loop(); // récupère et découpe les commandes entrées.
 
     // Libération des buffers
     free(previous_folder);
@@ -38,134 +41,105 @@ int main(int argc, char** argv) {
 
 void main_loop() {
     // Initialisation buffers.
-    char* buffer = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
-    size_t wordsCapacity = 15;
-    char** argsComm = malloc(wordsCapacity * sizeof(char*)); // Stocke les différents morceaux de la commande entrée.
-    unsigned index;
-    char* command = (char*)NULL;
-
+    char* strCommand = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
+    size_t* argsCapacity = malloc(sizeof(size_t)); // Taille du tableau récupérant les arguments d'une commande.
+    (*argsCapacity) = STARTING_ARGS_CAPACITY; // Est augmentée si nécessaire par parse_command.
+    char** argsComm = malloc((*argsCapacity) * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
+    unsigned index; // Compte le nombre d'arguments dans la commande entrée.
     // Paramétrage readline.
     rl_outstream = stderr;
     using_history();
-
     // Boucle de récupération et de découpe des commandes.
     while (running) {
-        reset(argsComm, wordsCapacity);
+        // Nettoyage buffers.
+        reset(argsComm, argsCapacity);
+        free(strCommand);
+        // Récupération de la commande entrée et affichage du prompt.
         char* tmp = getPrompt();
-        free(buffer);
-        buffer = readline(tmp);// Récupère la commande entrée.
-        command = malloc(sizeof(char)*strlen(buffer));
-        strcpy(command,buffer);
+        strCommand = readline(tmp);
         free(tmp);
-        if (buffer == NULL) {
+        // Tests commande non vide.
+        if (strCommand == NULL) {
             exit(lastReturn);
         } 
-        else if (strlen(buffer) == 0) {
+        else if (strlen(strCommand) == 0) {
             continue;
         }
+        // Traitement de la commande entrée.
         else {
-            add_history(buffer);
-            argsComm[0] = strtok(buffer, " ");
-            index = 1;
-            while (1) { // Boucle sur les mots d'une commande.
-                if (index == wordsCapacity) { // Si une commande contient plus de wordsCapacity mots,
-                // allocation supplémentaire.
-                    wordsCapacity *= 2;
-                    argsComm = realloc(argsComm, wordsCapacity * sizeof(char*));
-                }
-                argsComm[index] = strtok(NULL, " ");
-                if (argsComm[index] == NULL) break;
-                ++index;
-            }
-            // argsComm[index-1][strlen(argsComm[index-1])] = '\0'; // Enlève le \n de la fin du dernier mot.
-            if (strcmp(argsComm[0], "") != 0) callRightCommand(argsComm, index, command);//dans la commande jobs on a besoin du buffer
+            add_history(strCommand);
+            index = parse_command(strCommand, argsComm, argsCapacity); // Découpage de la commande.
+            callRightCommand(argsComm, index, strCommand); //dans la commande jobs on a besoin du buffer
         }
     }
-    // Libération de la mémoire après terminaison.
-    free(buffer);
+    // Libération de la mémoire allouée pour les buffers après terminaison.
+    free(strCommand);
     free(argsComm);
-    
 }
+
 
 // Exécute la bonne commande à partir des mots donnés en argument.
 void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
-    if (strcmp(argsComm[0], "cd") == 0) {
-        if (argsComm[2] != NULL) {
-            fprintf(stderr,"bash : cd: too many arguments\n");
-            lastReturn = -1;
-        }
-        else if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
-            char* home = getenv("HOME");
-            cd(home);
-        }
-        else if (strcmp(argsComm[1],"-") == 0) {
-            cd(previous_folder);
-        }
-        else {
-            cd(argsComm[1]);
+    // Commande pwd
+    if (strcmp(argsComm[0], "pwd") == 0) {
+        if (correct_nbArgs(argsComm, 1, 1)) {
+            char* path = pwd();
+            printf("%s\n",path);
+            free(path);
         }
     }
-    else if (strcmp(argsComm[0], "pwd") == 0) {
-        if (argsComm[1] != NULL) {
-            fprintf(stderr,"bash : pwd: too many arguments\n");
-            lastReturn = -1;
-        }
-        else {
-            char* folder = pwd();
-            printf("%s\n",folder);
-            free(folder);
-        }
-    }
-    else if (strcmp(argsComm[0], "exit") == 0) {
-        if (argsComm[2] != NULL) {
-            fprintf(stderr,"bash : exit: too many arguments\n");
-            lastReturn = -1;
-        }
-        else if (argsComm[1] == NULL) {
-            exit_jsh(lastReturn);
-        }
-        else {
-            int int_args = convert_str_to_int(argsComm[1]);
-            if (int_args == INT_MIN) {//we check the second argument doesn't contain some chars
-                fprintf(stderr,"Exit takes a normal integer as argument\n");
+    // Commande cd
+    else if (strcmp(argsComm[0], "cd") == 0) {
+        if (correct_nbArgs(argsComm, 1, 2)) {
+            if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
+                char* home = getenv("HOME");
+                cd(home);
             }
-            else {
-                exit_jsh(int_args);
-            }
+            else if (strcmp(argsComm[1],"-") == 0) cd(previous_folder);
+            else cd(argsComm[1]);
         }
     }
+    // Commande ?
     else if (strcmp(argsComm[0],"?") == 0) {
-        if (argsComm[1] != NULL) {
-            fprintf(stderr,"bash : ?: too many arguments");
-            lastReturn = -1;
-        }
-        else {
+        if (correct_nbArgs(argsComm, 1, 1)) {
             printf("%d\n",question_mark());
             lastReturn = 0;
         }
     }
+    // Commande jobs
     else if (strcmp(argsComm[0],"jobs") == 0) {
-        if (argsComm[1] != NULL) {//pour le deuxieme jalon pas besoin d'arguments a jobs
-            fprintf(stderr,"bash : jobs: too many arguments");
-            lastReturn = -1;
-        }
-        else {
+        if (correct_nbArgs(argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
             print_jobs();
             lastReturn = 0;
         }
     }
+    // Commande kill
     else if (strcmp(argsComm[0],"kill") == 0) {
-        if (argsComm[3] != NULL) {
-            fprintf(stderr,"bash : jobs: too many arguments");
-            lastReturn = -1;
-        }
-        else {
+        if (correct_nbArgs(argsComm, 2, 3)) {
             lastReturn = killJob(argsComm[1],argsComm[2]);
             if (lastReturn == -1) {
                 perror(NULL);
             }
         }
     }
+    // Commande exit
+    else if (strcmp(argsComm[0], "exit") == 0) {
+        if (correct_nbArgs(argsComm, 1, 2)) {
+            if (argsComm[1] == NULL) {
+                exit_jsh(lastReturn);
+            }
+            else {
+                int int_args = convert_str_to_int(argsComm[1]);
+                if (int_args == INT_MIN) {//we check the second argument doesn't contain some chars
+                    fprintf(stderr,"Exit takes a normal integer as argument\n");
+                }
+                else {
+                    exit_jsh(int_args);
+                }
+            }
+        }
+    }
+    // Commandes externes
     else {
         if (strcmp(argsComm[nbArgs-1],"&") == 0 && nbArgs-1 == 0) {
             fprintf(stderr,"Wrong command name\n");
@@ -180,58 +154,38 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     }
 }
 
-int convert_str_to_int (char* string) {
-    char** tmp = malloc(sizeof(char)*50);
-    int int_args = strtol(string,tmp,10);//base 10 and we store invalids arguments in tmp
-    if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
-        fprintf(stderr,"Exit takes a normal integer as argument\n");
-        return INT_MIN;
+/* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
+affiche un message d'erreur et retoure false sinon. */
+bool correct_nbArgs(char** argsComm, unsigned min_nbArgs, unsigned max_nbArgs) {
+    bool correct_nb = true;
+    if (argsComm[min_nbArgs-1] == NULL) {
+        fprintf(stderr,"bash : %s: too few arguments\n", argsComm[0]);
+        correct_nb = false;
+    } else if (argsComm[max_nbArgs] != NULL) {
+        fprintf(stderr,"bash : %s: too many arguments\n", argsComm[0]);
+        correct_nb = false;
     }
-    free(tmp);
-    return int_args;
+    if (!(correct_nb)) lastReturn = -1;
+    return correct_nb;
 }
 
-void reset(char** args, size_t len) {
-    for (int i = 0; i < len; i++) {
-        args[i] = NULL;
-    }
-}
-
-char* pwd () {
-    lastReturn = -1;
-    int size = 30;;
-    char* buf = malloc(sizeof(char)*(size));
-    if (buf == NULL) {
-        fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-        exit(-1);
-    }
-    char* returnValue = malloc(sizeof(char)*(size));
-    if (returnValue == NULL) {
-        fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-        exit(-1);
-    }
-    free(returnValue);
-    returnValue = getcwd(buf,size);
-    while (returnValue == NULL && errno == ERANGE) {
-        size++;
-        free(buf);
-        buf = malloc(sizeof(char)*(size));
-        if (buf == NULL) {
-            fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-            exit(-1);
+char* pwd() {
+    unsigned size = 30;
+    char* buf = malloc(size * sizeof(char));
+    checkAlloc(buf);
+    while (getcwd(buf,size) == NULL) { // Tant que getwd produit une erreur.
+        if (errno == ERANGE) { /* Si la taille de la string représentant le chemin est plus grande que
+        size, on augmente size et on réalloue. */
+            size *= 2;
+            buf = realloc(buf, size * sizeof(char));
+            checkAlloc(buf);
         }
-        free(returnValue);
-        returnValue = malloc(sizeof(char)*(size));
-        if (returnValue == NULL) {
-            fprintf(stderr,"ERROR IN MALLOC : DONT HAVE ENOUGH SPACE !");
-            exit(-1);
+        else { /* Si l'erreur dans getwd n'est pas dûe à la taille du buffer passé en argument, 
+        on affiche une erreur. */
+            lastReturn = -1;
+            fprintf(stderr,"ERROR IN pwd");
+            return buf;
         }
-        free(returnValue);
-        returnValue = getcwd(buf,size);
-    }
-    if (returnValue == NULL) {
-        fprintf(stderr,"ERROR IN pwd");
-        return buf;
     }
     lastReturn = 0;
     return buf;
@@ -244,7 +198,7 @@ int external_command(char** command, bool create_new_job, char* buffer) {
     pid_t pid = fork();
 
     if (pid == 0) {
-        int tmp;
+        int tmp = 0;
         if (nbJobs < 40) {
             tmp = execvp(command[0],command);
             fprintf(stderr,"Wrong command name\n");
@@ -358,70 +312,9 @@ void exit_jsh(int val) {
     }
 }
 
-void print_job(Job job) {
-    fprintf(stderr,"[%d] %d %s %s\n",job.nJob,job.pid,job.state,job.command_name);
-}
-
-void print_jobs() {
-    for (int i = 0; i < nbJobs; i++) {
-        if (l_jobs[i].pid != 0) {
-            //write(STDOUT_FILENO,"bonjour",7);
-            print_job(l_jobs[i]);
-        }
-    }
-}
-
-int length_nbJobs() {
-    int i = 1;
-    int x = nbJobs;
-    while (x>= 10){
-        i++;
-        x = x/10;
-    }
-    return i;
-}
-
-void removeJob (int n) {
-    l_jobs[n].nJob = 0;
-    l_jobs[n].pid = 0;
-    free(l_jobs[n].state);
-    free(l_jobs[n].command_name);
-    for (int i = n; i < nbJobs; i++) {
-        l_jobs[i] = l_jobs[i+1];
-    }
-}
-
-int killJob (char* sig, char* pid) {
-    int sig2 = convert_str_to_int(sig);
-    if (sig2 == INT_MIN) {
-        fprintf(stderr,"wrong command");
-        return -2;
-    }
-    int pid2 = convert_str_to_int(pid);
-    if (pid2 == INT_MIN) {
-        fprintf(stderr,"wrong command");
-        return -2;
-    }
-    int returnValue = kill(pid2,sig2);
-    if (returnValue == 0 && sig2 == 9) {
-        int i = 0;
-        while (l_jobs[i].pid == pid2) {
-            i++;
-        }
-        free(l_jobs[i].state);
-        char* state = malloc(sizeof(char)*11);
-        strcpy(state,"Terminated");
-        l_jobs[i].state = state;
-        print_job(l_jobs[i]);
-        removeJob(i);
-        nbJobs--;
-    }
-    return returnValue;
-}
-
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
-    int l_nbJobs = length_nbJobs();
+    int l_nbJobs = length_base10(nbJobs);
     int status;
     for (int i = 0; i < nbJobs; i++) {
         if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0) {
@@ -461,14 +354,14 @@ char* getPrompt() {
         }
     }
     if (strlen(current_folder) == 1) {
-        sprintf(prompt, BLEU"[%d]" NORMAL "~$ ", nbJobs);
+        sprintf(prompt, BLEU"[%d]" NORMAL "c$ ", nbJobs);
     }
     else if (strlen(current_folder) <= (26-l_nbJobs)) {
         sprintf(prompt, BLEU"[%d]" NORMAL "%s$ ", nbJobs, current_folder);
     }
     else{
         char* path = malloc(sizeof(char)*(27));
-        strncpy(path, (current_folder + (strlen(current_folder)-(23 - l_nbJobs))), (25 - l_nbJobs));
+        strncpy(path, (current_folder + (strlen(current_folder) - (23 - l_nbJobs))), (25 - l_nbJobs));
         sprintf(prompt, BLEU"[%d]" NORMAL "...%s$ ", nbJobs, path);
         free(path);
     }
