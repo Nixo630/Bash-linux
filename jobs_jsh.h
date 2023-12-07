@@ -8,8 +8,8 @@ struct Job {
 typedef struct Job Job;
 
 // Variables globales
-int nbJobs;
-Job* l_jobs;
+static int nbJobs;
+static Job* l_jobs;
 
 // Fonctions
 void print_job(Job job);

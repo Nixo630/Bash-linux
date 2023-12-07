@@ -15,6 +15,9 @@
 #include "jobs_jsh.h"
 #include "jsh.h"
 
+extern int nbJobs;
+extern Job* l_jobs;
+
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
 
@@ -314,7 +317,7 @@ void exit_jsh(int val) {
 
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
-    int l_nbJobs = base10(nbJobs);
+    int l_nbJobs = length_base10(nbJobs);
     int status;
     for (int i = 0; i < nbJobs; i++) {
         if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0) {
