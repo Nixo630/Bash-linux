@@ -1,3 +1,4 @@
+#include <stdbool.h>
 // Fonctions de commande
 char* pwd();
 void cd(char* pathname);

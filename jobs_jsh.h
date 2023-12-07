@@ -1,7 +1,7 @@
 // Structures
 struct Job {
     int nJob;
-    pid_t pid;
+    int pid;
     char* state;
     char* command_name;
 };
@@ -14,6 +14,5 @@ Job* l_jobs;
 // Fonctions
 void print_job(Job job);
 void print_jobs();
-//int length_nbJobs();
 void removeJob (int n);
 int killJob (char* sig, char* pid);

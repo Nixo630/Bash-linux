@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "parsing_jsh.h"
 
 /* Prend une commande (string), un tableau de string et la taille de ce tableau en arguments.
 Stocke les différents arguments de la commande dans le tableau, en agrandissant sa taille

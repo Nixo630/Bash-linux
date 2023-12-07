@@ -1,3 +1,4 @@
+#include <stddef.h>
 #define STARTING_ARGS_CAPACITY 32;
 
 // Fonctions

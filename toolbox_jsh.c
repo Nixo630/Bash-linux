@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include "toolbox_jsh.h"
 
 // Vérifie que le pointeur passé en argument est différent de NULL.
 void checkAlloc(void* ptr) {

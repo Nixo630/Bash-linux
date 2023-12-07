@@ -13,7 +13,6 @@ void print_job(Job job) {
 void print_jobs() {
     for (int i = 0; i < nbJobs; i++) {
         if (l_jobs[i].pid != 0) {
-            //write(STDOUT_FILENO,"bonjour",7);
             print_job(l_jobs[i]);
         }
     }
