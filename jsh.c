@@ -13,7 +13,6 @@
 #include "toolbox_jsh.h"
 #include "parsing_jsh.h"
 #include "jobs_jsh.h"
-#include "jsh.h"
 
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"

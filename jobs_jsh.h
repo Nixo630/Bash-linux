@@ -14,6 +14,6 @@ Job* l_jobs;
 // Fonctions
 void print_job(Job job);
 void print_jobs();
-int length_nbJobs();
+//int length_nbJobs();
 void removeJob (int n);
 int killJob (char* sig, char* pid);
