@@ -163,15 +163,16 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
 }
 
 void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int cpy_stin = dup(STDIN_FILENO);
     int fd = open(pathname,O_WRONLY|O_APPEND);
         dup2(fd,STDIN_FILENO);
         callRightCommand(argsComm,nbArgs,buffer);
-        dup2(dup(0),0);
+        dup2(cpy_stin,0);
 }
 
 void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
     
-    int cpy_stdout = dup(1);
+    int cpy_stdout = dup(STDOUT_FILENO);
     int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
     if (fd == -1){
         fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
