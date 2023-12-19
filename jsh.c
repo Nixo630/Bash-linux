@@ -222,6 +222,14 @@ void error_overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer
     dup2(cpy_stderr,2);
 }
 
+void error_concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int cpy_stderr = dup(STDERR_FILENO);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND);
+    dup2(fd,STDERR_FILENO);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(cpy_stderr,2);
+}
+
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 affiche un message d'erreur et retoure false sinon. */
