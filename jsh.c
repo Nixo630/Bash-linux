@@ -208,10 +208,18 @@ void error_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pa
         lastReturn = 1;
     }
     else{
-        dup2(fd,STDOUT_FILENO);
+        dup2(fd,STDERR_FILENO);
         callRightCommand(argsComm,nbArgs,buffer);
         dup2(cpy_sterr,2);
     }
+}
+
+void error_overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int cpy_stderr = dup(STDERR_FILENO);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
+    dup2(fd,STDERR_FILENO);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(cpy_stderr,2);
 }
 
 
