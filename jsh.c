@@ -171,7 +171,6 @@ void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pa
 }
 
 void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    
     int cpy_stdout = dup(STDOUT_FILENO);
     int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
     if (fd == -1){
@@ -183,29 +182,36 @@ void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * p
         callRightCommand(argsComm,nbArgs,buffer);
         dup2(cpy_stdout,1);
     }
-    
-
 }
 
-void OverWritteRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int cpy_stdout = dup(STDOUT_FILENO);
     int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
     dup2(fd,STDOUT_FILENO);
     callRightCommand(argsComm,nbArgs,buffer);
-    dup2(dup(1),1);
+    dup2(cpy_stdout,1);
 }
 
-void OverWritteRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
+void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int cpy_stdout = dup(STDOUT_FILENO);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND);
     dup2(fd,STDOUT_FILENO);
     callRightCommand(argsComm,nbArgs,buffer);
-    dup2(dup(1),1);
+    dup2(cpy_stdout,1);
 }
 
-void entreRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int fd = open(pathname,O_WRONLY|O_APPEND);
-        dup2(fd,STDIN_FILENO);
+void error_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int cpy_sterr = dup(STDERR_FILENO);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
+    if (fd == -1){
+        fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
+        lastReturn = 1;
+    }
+    else{
+        dup2(fd,STDOUT_FILENO);
         callRightCommand(argsComm,nbArgs,buffer);
-        dup2(dup(0),0);
+        dup2(cpy_sterr,2);
+    }
 }
 
 
