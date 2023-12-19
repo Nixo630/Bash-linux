@@ -162,24 +162,28 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     }
 }
 
-void entreRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
     int fd = open(pathname,O_WRONLY|O_APPEND);
         dup2(fd,STDIN_FILENO);
         callRightCommand(argsComm,nbArgs,buffer);
         dup2(dup(0),0);
 }
 
-void simpleRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    if (fopen(pathname,"r+") != 0){
-        int fd = open(pathname,O_WRONLY|O_APPEND);
+void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    
+    int cpy_stdout = dup(1);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
+    if (fd == -1){
+        fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
+        lastReturn = 1;
+    }
+    else{
         dup2(fd,STDOUT_FILENO);
         callRightCommand(argsComm,nbArgs,buffer);
-        dup2(dup(1),1);
-        }
-    else {
-        fprintf(stderr,"bash : %s: file does not exist \n", argsComm[0]);
-        lastReturn = -1;
+        dup2(cpy_stdout,1);
     }
+    
+
 }
 
 void OverWritteRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
@@ -194,6 +198,13 @@ void OverWritteRedirection(char** argsComm, unsigned nbArgs, char* buffer, char 
     dup2(fd,STDOUT_FILENO);
     callRightCommand(argsComm,nbArgs,buffer);
     dup2(dup(1),1);
+}
+
+void entreRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int fd = open(pathname,O_WRONLY|O_APPEND);
+        dup2(fd,STDIN_FILENO);
+        callRightCommand(argsComm,nbArgs,buffer);
+        dup2(dup(0),0);
 }
 
 
