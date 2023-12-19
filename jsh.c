@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -10,6 +11,7 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include "toolbox_jsh.h"
 #include "parsing_jsh.h"
 #include "jobs_jsh.h"
@@ -79,6 +81,14 @@ void main_loop() {
     free(strCommand);
     free(argsComm);
 }
+
+void simpleRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT);
+    dup2(fd,STDOUT_FILENO);
+
+}
+
+
 
 
 // Exécute la bonne commande à partir des mots donnés en argument.
@@ -156,6 +166,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         }
     }
 }
+
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 affiche un message d'erreur et retoure false sinon. */
