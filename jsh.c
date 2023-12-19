@@ -82,11 +82,6 @@ void main_loop() {
     free(argsComm);
 }
 
-void simpleRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT);
-    dup2(fd,STDOUT_FILENO);
-
-}
 
 
 
@@ -165,6 +160,20 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
             lastReturn = external_command(argsComm,false,buffer);
         }
     }
+}
+
+void simpleRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT);
+    dup2(fd,STDOUT_FILENO);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(dup(1),1);
+}
+
+void OverwritteRedirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
+    dup2(fd,STDOUT_FILENO);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(dup(1),1);
 }
 
 
