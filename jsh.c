@@ -230,6 +230,26 @@ void error_concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, ch
     dup2(cpy_stderr,2);
 }
 
+cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
+    int t[2];
+    pipe(t);
+    int cpy_1 = dup(1);
+    int cpy_2 = dup(0);
+    dup2(t[1],STDOUT_FILENO);
+    dup2(t[0],STDIN_FILENO);
+    callRightCommand(argsComm_1,nbArgs_1,buffer_1);
+    int n = read(t[0],argsComm_2[0],100);
+    if (n<0) {
+        perror("argument invalids, no OUT value of cm1"); 
+        lastReturn = 1;
+    }
+    else{
+        callRightCommand(argsComm_2,nbArgs_1,buffer_1);
+    }
+    
+
+}
+
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 affiche un message d'erreur et retoure false sinon. */
