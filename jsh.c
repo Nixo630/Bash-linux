@@ -23,6 +23,50 @@ extern Job* l_jobs;
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
 
+void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_flow = dup(flow);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL,0777);
+    if (fd == -1){
+        fprintf(stderr,"bash : %s: file does already exist\n", argsComm[0]);
+        lastReturn = 1;
+    }
+    else{
+        dup2(fd,flow);
+        callRightCommand(argsComm,nbArgs,buffer);
+        dup2(cpy_flow,second_flow);
+    }
+    close(fd);
+}
+
+void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_flow = dup(flow);
+    int fd = open(pathname,O_WRONLY|O_TRUNC,0777);
+    dup2(fd,flow);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(cpy_flow,second_flow);
+    close(fd);
+}
+
 int main(int argc, char** argv) {
     // Initialisation variables globales
     previous_folder = pwd();
@@ -43,6 +87,26 @@ int main(int argc, char** argv) {
     }
     return lastReturn;
 }
+
+void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_stdout = dup(flow);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND,0777);
+    dup2(fd,flow);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(cpy_stdout,second_flow);
+    close(fd);
+}
+
 
 void main_loop() {
     // Initialisation buffers.
@@ -74,6 +138,7 @@ void main_loop() {
         else {
             add_history(strCommand);
             index = parse_command(strCommand, argsComm, argsCapacity); // Découpage de la commande.
+
             callRightCommand(argsComm, index, strCommand); //dans la commande jobs on a besoin du buffer
         }
     }
@@ -164,86 +229,23 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
 
 void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
     int cpy_stin = dup(STDIN_FILENO);
-    int fd = open(pathname,O_WRONLY|O_APPEND);
-        dup2(fd,STDIN_FILENO);
-        callRightCommand(argsComm,nbArgs,buffer);
-        dup2(cpy_stin,0);
-}
-
-void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_flow = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
-    if (fd == -1){
-        fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
-        lastReturn = 1;
-    }
-    else{
-        dup2(fd,flow);
-        callRightCommand(argsComm,nbArgs,buffer);
-        dup2(cpy_flow,second_flow);
-    }
-}
-
-
-void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int cpy_flow = dup(STDOUT_FILENO);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
-    dup2(fd,STDOUT_FILENO);
+    int fd = open(pathname,O_WRONLY|O_APPEND,0777);
+    dup2(fd,STDIN_FILENO);
     callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_flow,1);
-}
-
-
-void error_overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_flow = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
-    dup2(fd,flow);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_flow,second_flow);
+    dup2(cpy_stin,0);
+    close(fd);
 }
 
 
 
-void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_stdout = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND);
-    dup2(fd,flow);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_stdout,second_flow);
-}
 
 
 
+
+
+
+
+//test phase, does not work yet
 void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
     int t[2];
     pipe(t);
