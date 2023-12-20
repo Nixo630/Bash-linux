@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -10,6 +11,7 @@
 #include <readline/history.h>
 #include <limits.h>
 #include <signal.h>
+#include <sys/stat.h>
 #include "toolbox_jsh.h"
 #include "parsing_jsh.h"
 #include "jobs_jsh.h"
@@ -79,6 +81,9 @@ void main_loop() {
     free(strCommand);
     free(argsComm);
 }
+
+
+
 
 
 // Exécute la bonne commande à partir des mots donnés en argument.
@@ -156,6 +161,113 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         }
     }
 }
+
+void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+    int cpy_stin = dup(STDIN_FILENO);
+    int fd = open(pathname,O_WRONLY|O_APPEND);
+        dup2(fd,STDIN_FILENO);
+        callRightCommand(argsComm,nbArgs,buffer);
+        dup2(cpy_stin,0);
+}
+
+void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_flow = dup(flow);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
+    if (fd == -1){
+        fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
+        lastReturn = 1;
+    }
+    else{
+        dup2(fd,flow);
+        callRightCommand(argsComm,nbArgs,buffer);
+        dup2(cpy_flow,second_flow);
+    }
+}
+
+
+void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
+    int cpy_flow = dup(STDOUT_FILENO);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
+    dup2(fd,STDOUT_FILENO);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(cpy_flow,1);
+}
+
+
+void error_overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_flow = dup(flow);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
+    dup2(fd,flow);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(cpy_flow,second_flow);
+}
+
+
+
+void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_stdout = dup(flow);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND);
+    dup2(fd,flow);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(cpy_stdout,second_flow);
+}
+
+
+
+void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
+    int t[2];
+    pipe(t);
+    int cpy_1 = dup(1);
+    int cpy_2 = dup(0);
+    dup2(t[1],STDOUT_FILENO);
+    dup2(t[0],STDIN_FILENO);
+    callRightCommand(argsComm_1,nbArgs_1,buffer_1);
+    int n = read(t[0],argsComm_2[0],100);
+    if (n<0) {
+        dup2(cpy_1,1);
+        dup2(cpy_2,0);
+        perror("argument invalids, no OUT value of cm1"); 
+        lastReturn = 1;
+    }
+    else{
+        callRightCommand(argsComm_2,nbArgs_1,buffer_1);
+    }
+    dup2(cpy_1,1);
+    dup2(cpy_2,0);
+}
+
+
+
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 affiche un message d'erreur et retoure false sinon. */
