@@ -203,12 +203,22 @@ void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, char
     dup2(cpy_stdout,1);
 }
 
-void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int cpy_stdout = dup(STDOUT_FILENO);
+void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_stdout = dup(flow);
     int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND);
-    dup2(fd,STDOUT_FILENO);
+    dup2(fd,flow);
     callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_stdout,1);
+    dup2(cpy_stdout,second_flow);
 }
 
 
@@ -220,13 +230,7 @@ void error_overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer
     dup2(cpy_stderr,2);
 }
 
-void error_concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int cpy_stderr = dup(STDERR_FILENO);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND);
-    dup2(fd,STDERR_FILENO);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_stderr,2);
-}
+
 
 void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
     int t[2];
