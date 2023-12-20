@@ -170,19 +170,30 @@ void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pa
         dup2(cpy_stin,0);
 }
 
-void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int cpy_stdout = dup(STDOUT_FILENO);
+void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ){
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = 2;
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = 1;
+    }
+    int cpy_stdout = dup(flow);
     int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
     if (fd == -1){
         fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
         lastReturn = 1;
     }
     else{
-        dup2(fd,STDOUT_FILENO);
+        dup2(fd,flow);
         callRightCommand(argsComm,nbArgs,buffer);
-        dup2(cpy_stdout,1);
+        dup2(cpy_stdout,second_flow);
     }
 }
+
 
 void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
     int cpy_stdout = dup(STDOUT_FILENO);
@@ -200,19 +211,6 @@ void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * p
     dup2(cpy_stdout,1);
 }
 
-void error_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int cpy_sterr = dup(STDERR_FILENO);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
-    if (fd == -1){
-        fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
-        lastReturn = 1;
-    }
-    else{
-        dup2(fd,STDERR_FILENO);
-        callRightCommand(argsComm,nbArgs,buffer);
-        dup2(cpy_sterr,2);
-    }
-}
 
 void error_overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
     int cpy_stderr = dup(STDERR_FILENO);
@@ -230,7 +228,7 @@ void error_concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, ch
     dup2(cpy_stderr,2);
 }
 
-cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
+void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
     int t[2];
     pipe(t);
     int cpy_1 = dup(1);
@@ -240,15 +238,19 @@ cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** arg
     callRightCommand(argsComm_1,nbArgs_1,buffer_1);
     int n = read(t[0],argsComm_2[0],100);
     if (n<0) {
+        dup2(cpy_1,1);
+        dup2(cpy_2,0);
         perror("argument invalids, no OUT value of cm1"); 
         lastReturn = 1;
     }
     else{
         callRightCommand(argsComm_2,nbArgs_1,buffer_1);
     }
-    
-
+    dup2(cpy_1,1);
+    dup2(cpy_2,0);
 }
+
+
 
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
