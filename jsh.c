@@ -140,8 +140,10 @@ void main_loop() {
     free(strCommand);
     free(argsComm);
 }
-
-bool is_in_symb (const char list[7][3], char* s){
+/*
+bool is_in_symb ( char* s){
+    
+    char list [7][3] = {"<",">","2>",">>","2>>",">|","2>|"};
     for (int i = 0; i < 7; i++){ 
         if (strcmp(s,list[i])== 0) return true;
     }
@@ -150,17 +152,65 @@ bool is_in_symb (const char list[7][3], char* s){
 
 int count_symbols(char** argsComm,  unsigned nbArgs){
     int cpt = 0;
-    char list [7][3] = {"<",">","2>",">>","2>>",">|","2>|"};
     for (int i = 0; i < nbArgs; i++){
-        if (is_in_symb(list,argsComm[i])) cpt ++;
+        if (is_in_symb(argsComm[i])) cpt ++;
     }
     return cpt;
 }
 
+int get_n_symbol (char** argsComm,unsigned nbArgs ,int n){
+    int cpt = 1;
+    for (int i = 0; i < nbArgs; i++){
+        if (is_in_symb(argsComm[i])) {
+            if (cpt == n) return i;
+            else cpt++;
+        }
+    }
+    return nbArgs;
+}
+
+char ** separate_cmd(char** argsComm, unsigned nbArgs, int n1, int n2){
+    size_t* argsCapacity = malloc(sizeof(size_t)); 
+    (*argsCapacity) = STARTING_ARGS_CAPACITY; 
+    char** new_argsComm = malloc((*argsCapacity) * sizeof(char*));
+
+    for (int i = n1; i < n2 ; i++){
+        new_argsComm[i-n1] = argsComm[i];
+    }
+    return new_argsComm;
+
+
+}
+
+void multiples_call (char** argsComm, unsigned nbArgs, char* buffer,int nb_symb){
+
+ 
+    int x1;
+    int x2;
+    for (int i = 0; i < nb_symb; i++){
+        if (i == 0 ) x1 = 0;
+        else x1 = get_n_symbol (argsComm,nbArgs,i)+1;
+        x2 = get_n_symbol (argsComm,nbArgs,i+2); 
+            char ** new_argsComm = separate_cmd (argsComm,nbArgs,x1,x2);
+
+            for (int j = 0; j < (x2-x1); j++){
+            printf("arg0 = %s\n",new_argsComm[j]);
+            }
+            
+            printf("\n");
+            callRightCommand(new_argsComm,x2-x1,buffer);
+
+            }
+        
+    
+}
+*/
+
 
 // Exécute la bonne commande à partir des mots donnés en argument.
 void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
-    printf(" il y a %i symboles\n", count_symbols(argsComm,nbArgs));
+    //int nb_symb = count_symbols(argsComm,nbArgs);
+    //if (nb_symb > 1) multiples_call (argsComm,nbArgs,buffer,nb_symb);
     // Commande pwd
     if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"<") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -320,13 +370,17 @@ void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool err
         lastReturn = 1;
         return;
     }
+    else{
     dup2(fd,flow);
     callRightCommand(argsComm,nbArgs,buffer);
     dup2(second_flow,flow);
     close(fd);
+    }
 }
 
 void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ) {
+    
+    
     int flow;
     int second_flow;
     if (error) {
@@ -342,10 +396,13 @@ void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool
         lastReturn = 1;
         return;
     }
+    else{
     dup2(fd,flow);
     callRightCommand(argsComm,nbArgs,buffer);
     dup2(second_flow,flow);
+
     close(fd);
+    }
 }
 
 void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ) {
@@ -355,10 +412,12 @@ void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pa
         lastReturn = 1;
         return;
     }
+    else{
     dup2(fd,STDIN_FILENO);
     callRightCommand(argsComm,nbArgs,buffer);
     dup2(cpy_stin,0);
     close(fd);
+    }
 }
 
 void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ) {
@@ -378,12 +437,12 @@ void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool erro
         lastReturn =  1;
     }
     else{
+
         dup2(fd,flow);
         callRightCommand(argsComm,nbArgs,buffer);
         dup2(second_flow,flow);
+        close(fd);
     }
-
-    close(fd);
 }
 
 //test phase, does not work yet
