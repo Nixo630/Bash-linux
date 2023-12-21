@@ -297,9 +297,9 @@ void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool err
         flow = STDOUT_FILENO;
         second_flow = dup(1);
     }
-    int fd = open(pathname,O_WRONLY|O_APPEND,0777);
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT,0777);
     if (fd == -1) {
-        lastReturn = -1;
+        lastReturn = 1;
         return;
     }
     dup2(fd,flow);
@@ -319,9 +319,9 @@ void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool
         flow = 1;
         second_flow = dup(1);
     }
-    int fd = open(pathname,O_WRONLY|O_TRUNC,0777);
+    int fd = open(pathname,O_WRONLY|O_CREAT|O_TRUNC,0777);
     if (fd == -1) {
-        lastReturn = -1;
+        lastReturn = 1;
         return;
     }
     dup2(fd,flow);
@@ -334,7 +334,7 @@ void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pa
     int cpy_stin = dup(STDIN_FILENO);
     int fd = open(pathname,O_RDONLY,0777);
     if (fd == -1) {
-        lastReturn = -1;
+        lastReturn = 1;
         return;
     }
     dup2(fd,STDIN_FILENO);
@@ -357,7 +357,7 @@ void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool erro
     int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL,0777);
     if (fd == -1){
         fprintf(stderr,"bash : %s: file does already exist\n", argsComm[0]);
-        lastReturn = 1;
+        lastReturn =  1;
     }
     else{
         dup2(fd,flow);
