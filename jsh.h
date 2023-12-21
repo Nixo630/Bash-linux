@@ -9,7 +9,7 @@ int external_command(char** arguments, bool create_new_job, char* buffer);
 // Fonctions auxiliaires
 int main(int argc, char** argv);
 void main_loop();
-void callRightCommand(char**argsComm, unsigned nbArgs, char* buffer);
+void callRightCommand(char**argsComm, unsigned nbArgs, char* strComm);
 bool correct_nbArgs(char**, unsigned, unsigned);
 char* getPrompt();
 

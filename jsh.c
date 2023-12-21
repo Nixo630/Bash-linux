@@ -46,7 +46,8 @@ int main(int argc, char** argv) {
 
 void main_loop() {
     // Initialisation buffers.
-    char* strCommand = (char*)NULL; // Stocke la commande entrée par l'utilisateur.
+    char* strInput = (char*)NULL; // Stocke la ligne de commande entrée par l'utilisateur.
+    char* strComm = (char*)NULL; // Stocke la première commande de la ligne entrée.
     size_t* argsCapacity = malloc(sizeof(size_t)); // Taille du tableau récupérant les arguments d'une commande.
     (*argsCapacity) = STARTING_ARGS_CAPACITY; // Est augmentée si nécessaire par parse_command.
     char** argsComm = malloc((*argsCapacity) * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
@@ -58,27 +59,43 @@ void main_loop() {
     while (running) {
         // Nettoyage buffers.
         reset(argsComm, argsCapacity);
-        free(strCommand);
+        free(strInput);
         // Récupération de la commande entrée et affichage du prompt.
-        char* tmp = getPrompt();
-        strCommand = readline(tmp);
-        free(tmp);
+        char* tmp1 = getPrompt();
+        strInput = readline(tmp1);
+        // char* tmp2 = readline(tmp1);
+        // strcpy(bufInput, strInput);
+        // free(strInput);
+        free(tmp1);
+        // free(tmp2);
         // Tests commande non vide.
-        if (strCommand == NULL) {
+        if (strInput == NULL) {
             exit(lastReturn);
         } 
-        else if (strlen(strCommand) == 0) {
+        else if (strlen(strInput) == 0) {
             continue;
         }
-        // Traitement de la commande entrée.
+        // Traitement de la ligne de commande entrée.
         else {
-            add_history(strCommand);
-            index = parse_command(strCommand, argsComm, argsCapacity); // Découpage de la commande.
-            callRightCommand(argsComm, index, strCommand); //dans la commande jobs on a besoin du buffer
+            add_history(strInput);
+            while(1) {
+                printf("test1\n");
+                strComm = first_command(strInput);
+                printf("test2\n");
+                if (strComm == NULL) {
+                    index = parse_command(strInput, argsComm, argsCapacity);
+                    callRightCommand(argsComm, index, strInput);
+                    break;
+                }
+                printf("%s,%s\n", strComm, strInput);
+                index = parse_command(strComm, argsComm, argsCapacity);
+                callRightCommand(argsComm, index, strComm);
+                free(strComm);
+            }
         }
     }
     // Libération de la mémoire allouée pour les buffers après terminaison.
-    free(strCommand);
+    free(strInput);
     free(argsComm);
 }
 
@@ -87,7 +104,7 @@ void main_loop() {
 
 
 // Exécute la bonne commande à partir des mots donnés en argument.
-void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
+void callRightCommand(char** argsComm, unsigned nbArgs, char* strComm) {
     // Commande pwd
     if (strcmp(argsComm[0], "pwd") == 0) {
         if (correct_nbArgs(argsComm, 1, 1)) {
@@ -154,10 +171,10 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         }
         else if (strcmp(argsComm[nbArgs-1],"&") == 0) {
             argsComm[nbArgs-1] = NULL;
-            lastReturn = external_command(argsComm,true,buffer);
+            lastReturn = external_command(argsComm,true,strComm);
         }
         else {
-            lastReturn = external_command(argsComm,false,buffer);
+            lastReturn = external_command(argsComm,false,strComm);
         }
     }
 }
