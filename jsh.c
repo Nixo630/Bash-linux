@@ -141,8 +141,26 @@ void main_loop() {
     free(argsComm);
 }
 
+bool is_in_symb (const char list[7][3], char* s){
+    for (int i = 0; i < 7; i++){ 
+        if (strcmp(s,list[i])== 0) return true;
+    }
+    return false;
+}
+
+int count_symbols(char** argsComm,  unsigned nbArgs){
+    int cpt = 0;
+    char list [7][3] = {"<",">","2>",">>","2>>",">|","2>|"};
+    for (int i = 0; i < nbArgs; i++){
+        if (is_in_symb(list,argsComm[i])) cpt ++;
+    }
+    return cpt;
+}
+
+
 // Exécute la bonne commande à partir des mots donnés en argument.
 void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
+    printf(" il y a %i symboles\n", count_symbols(argsComm,nbArgs));
     // Commande pwd
     if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"<") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
