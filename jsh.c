@@ -46,9 +46,7 @@ int main(int argc, char** argv) {
 
 void main_loop() {
     // Initialisation buffers.
-    char* tmp1 = (char*)NULL;
-    char* tmp2 = (char*)NULL;
-    char* strInput = (char*) malloc(5 * 32 * sizeof(char)); // Stocke la ligne de commande entrée par l'utilisateur.
+    char* strInput = (char*) NULL; // Stocke la ligne de commande entrée par l'utilisateur.
     char* strComm = (char*)NULL; // Stocke la première commande de la ligne entrée.
     size_t* argsCapacity = malloc(sizeof(size_t)); // Taille du tableau récupérant les arguments d'une commande.
     (*argsCapacity) = STARTING_ARGS_CAPACITY; // Est augmentée si nécessaire par parse_command.
@@ -61,17 +59,11 @@ void main_loop() {
     while (running) {
         // Nettoyage buffers.
         reset(argsComm, argsCapacity);
-        // printf("Here\n");
-        // free(strInput);
+        free(strInput);
         // Récupération de la commande entrée et affichage du prompt.
-        tmp1 = getPrompt();
-        // strInput = readline(tmp1);
-        tmp2 = readline(tmp1);
-        strcpy(strInput, tmp2);
-        // printf("%s\n", strInput);
-        // free(strInput);
-        free(tmp1);
-        free(tmp2);
+        char* tmp = getPrompt();
+        strInput = readline(tmp);
+        free(tmp);
         // Tests commande non vide.
         if (strInput == NULL) {
             exit(lastReturn);
@@ -83,15 +75,12 @@ void main_loop() {
         else {
             add_history(strInput);
             while(1) {
-                // printf("test1\n");
                 strComm = first_command(strInput);
-                // printf("test2\n");
                 if (strComm == NULL) {
                     index = parse_command(strInput, argsComm, argsCapacity);
                     callRightCommand(argsComm, index, strInput);
                     break;
                 }
-                // printf("%s,%s\n", strComm, strInput);
                 index = parse_command(strComm, argsComm, argsCapacity);
                 callRightCommand(argsComm, index, strComm);
                 free(strComm);
