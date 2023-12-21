@@ -138,7 +138,7 @@ void main_loop() {
     }
     // Libération de la mémoire allouée pour les buffers après terminaison.
     free(argsCapacity);
-    //free(buffer);
+    free(buffer);
     free(strCommand);
     free(argsComm);
 }

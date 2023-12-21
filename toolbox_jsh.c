@@ -33,14 +33,14 @@ int convert_str_to_int (char* string) {
             free(tmp2);
             free(string2);
             int_args = int_args*(-1);
-            printf("%d\n",int_args);
+            //printf("%d\n",int_args);
             return int_args;
         }
         free(tmp);
         return INT_MIN;
     }
     free(tmp);
-    printf("%d\n",int_args);
+    //printf("%d\n",int_args);
     return int_args;
 }
 
