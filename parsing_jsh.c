@@ -6,14 +6,14 @@
 char* first_command(char* input) {
     char* tmp = NULL;
     tmp = strstr(input, "|");
-    printf("%s\n",tmp);
+    // printf("%s\n",tmp);
     if (tmp != NULL) {
         char* strComm = malloc(sizeof(input));
         int len_command = strlen(input) - strlen(tmp);
         strncpy(strComm, input, len_command); // troncage de l'input à la première commande.
-        printf("test3\n");
+        // printf("test3\n");
         strcpy(input, tmp+1);
-        printf("test4\n");
+        // printf("test4\n");
         return strComm;
     } else {
         tmp = strstr(input, "&");
