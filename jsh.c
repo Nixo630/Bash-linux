@@ -57,7 +57,7 @@ int killJob (char* sig, char* pid) {
     int returnValue = kill(pid2,sig2);
     if (returnValue == 0 && sig2 == 9) {
         int i = 0;
-        while (l_jobs[i].pid == pid2) {
+        while (l_jobs[i].pid != pid2) {
             i++;
         }
         free(l_jobs[i].state);
@@ -103,6 +103,7 @@ void main_loop() {
     (*argsCapacity) = STARTING_ARGS_CAPACITY; // Est augmentée si nécessaire par parse_command.
     char** argsComm = malloc((*argsCapacity) * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
     unsigned index; // Compte le nombre d'arguments dans la commande entrée.
+    char* buffer = malloc(sizeof(char)*100);
     //char * buffer = malloc(sizeof(char)*2);
     // Paramétrage readline.
     rl_outstream = stderr;
@@ -128,10 +129,11 @@ void main_loop() {
         }
         // Traitement de la commande entrée.
         else {
+            buffer = strcpy(buffer,strCommand);
             add_history(strCommand);
             index = parse_command(strCommand, argsComm, argsCapacity); // Découpage de la commande.
 
-            callRightCommand(argsComm, index,strCommand); //dans la commande jobs on a besoin du buffer
+            callRightCommand(argsComm, index,buffer); //dans la commande jobs on a besoin du buffer
         }
     }
     // Libération de la mémoire allouée pour les buffers après terminaison.
