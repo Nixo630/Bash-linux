@@ -92,7 +92,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-1] = NULL;
         argsComm[nbArgs-2] = NULL;
 
-        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+        entry_redirection(argsComm,nbArgs-2,buffer,path);
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -100,25 +100,17 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-1] = NULL;
         argsComm[nbArgs-2] = NULL;
 
-        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
-    }
-    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">|") == 0) {
-        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
-        strcpy(path,argsComm[nbArgs-1]);
-        argsComm[nbArgs-1] = NULL;
-        argsComm[nbArgs-2] = NULL;
-
-        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
-    }
-    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">>") == 0) {
-        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
-        strcpy(path,argsComm[nbArgs-1]);
-        argsComm[nbArgs-1] = NULL;
-        argsComm[nbArgs-2] = NULL;
-
-        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+        simple_redirection(argsComm,nbArgs-2,buffer,false,path);
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        simple_redirection(argsComm,nbArgs-2,buffer,true,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">|") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
         strcpy(path,argsComm[nbArgs-1]);
         argsComm[nbArgs-1] = NULL;
@@ -132,7 +124,15 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-1] = NULL;
         argsComm[nbArgs-2] = NULL;
 
-        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+        overwritte_redirection(argsComm,nbArgs-2,buffer,true,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">>") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        concat_redirection(argsComm,nbArgs-2,buffer,false,path);
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>>") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -140,7 +140,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-1] = NULL;
         argsComm[nbArgs-2] = NULL;
 
-        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+        concat_redirection(argsComm,nbArgs-2,buffer,true,path);
     }
     else if (strcmp(argsComm[0], "pwd") == 0) {
         if (correct_nbArgs(argsComm, 1, 1)) {
@@ -226,7 +226,7 @@ void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool err
         flow = STDOUT_FILENO;
         second_flow = dup(1);
     }
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND,0777);
+    int fd = open(pathname,O_WRONLY|O_APPEND,0777);
     if (fd == -1) {
         lastReturn = -1;
         return;
@@ -248,7 +248,7 @@ void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool
         flow = 1;
         second_flow = dup(1);
     }
-    int fd = open(pathname,O_WRONLY|O_CREAT|O_EXCL,0777);
+    int fd = open(pathname,O_WRONLY|O_TRUNC,0777);
     if (fd == -1) {
         lastReturn = -1;
         return;
