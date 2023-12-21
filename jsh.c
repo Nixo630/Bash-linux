@@ -23,50 +23,6 @@ extern Job* l_jobs;
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
 
-void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_flow = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL,0777);
-    if (fd == -1){
-        fprintf(stderr,"bash : %s: file does already exist\n", argsComm[0]);
-        lastReturn = 1;
-    }
-    else{
-        dup2(fd,flow);
-        callRightCommand(argsComm,nbArgs,buffer);
-        dup2(cpy_flow,second_flow);
-    }
-    close(fd);
-}
-
-void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_flow = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_TRUNC,0777);
-    dup2(fd,flow);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_flow,second_flow);
-    close(fd);
-}
-
 int main(int argc, char** argv) {
     // Initialisation variables globales
     previous_folder = pwd();
@@ -87,26 +43,6 @@ int main(int argc, char** argv) {
     }
     return lastReturn;
 }
-
-void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_stdout = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND,0777);
-    dup2(fd,flow);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_stdout,second_flow);
-    close(fd);
-}
-
 
 void main_loop() {
     // Initialisation buffers.
@@ -147,14 +83,66 @@ void main_loop() {
     free(argsComm);
 }
 
-
-
-
-
 // Exécute la bonne commande à partir des mots donnés en argument.
 void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     // Commande pwd
-    if (strcmp(argsComm[0], "pwd") == 0) {
+    if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"<") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">|") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">>") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>|") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+    }
+    else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>>") == 0) {
+        char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
+        strcpy(path,argsComm[nbArgs-1]);
+        argsComm[nbArgs-1] = NULL;
+        argsComm[nbArgs-2] = NULL;
+
+        overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+    }
+    else if (strcmp(argsComm[0], "pwd") == 0) {
         if (correct_nbArgs(argsComm, 1, 1)) {
             char* path = pwd();
             printf("%s\n",path);
@@ -227,26 +215,89 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
     }
 }
 
-void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
+void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ) {
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = dup(2);
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = dup(1);
+    }
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND,0777);
+    if (fd == -1) {
+        lastReturn = -1;
+        return;
+    }
+    dup2(fd,flow);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(second_flow,flow);
+    close(fd);
+}
+
+void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ) {
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = 2;
+        second_flow = dup(2);
+    }
+    else {
+        flow = 1;
+        second_flow = dup(1);
+    }
+    int fd = open(pathname,O_WRONLY|O_CREAT|O_EXCL,0777);
+    if (fd == -1) {
+        lastReturn = -1;
+        return;
+    }
+    dup2(fd,flow);
+    callRightCommand(argsComm,nbArgs,buffer);
+    dup2(second_flow,flow);
+    close(fd);
+}
+
+void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ) {
     int cpy_stin = dup(STDIN_FILENO);
     int fd = open(pathname,O_WRONLY|O_APPEND,0777);
+    if (fd == -1) {
+        lastReturn = -1;
+        return;
+    }
     dup2(fd,STDIN_FILENO);
     callRightCommand(argsComm,nbArgs,buffer);
     dup2(cpy_stin,0);
     close(fd);
 }
 
-
-
-
-
-
-
-
-
+void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ) {
+    int flow;
+    int second_flow;
+    if (error) {
+        flow = STDERR_FILENO;
+        second_flow = dup(2);
+    }
+    else {
+        flow = STDOUT_FILENO;
+        second_flow = dup(1);
+    }
+    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL,0777);
+    if (fd == -1){
+        fprintf(stderr,"bash : %s: file does already exist\n", argsComm[0]);
+        lastReturn = 1;
+    }
+    else{
+        dup2(fd,flow);
+        callRightCommand(argsComm,nbArgs,buffer);
+        dup2(second_flow,flow);
+    }
+    close(fd);
+}
 
 //test phase, does not work yet
-void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
+void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2) {
     int t[2];
     pipe(t);
     int cpy_1 = dup(1);
@@ -267,9 +318,6 @@ void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char*
     dup2(cpy_1,1);
     dup2(cpy_2,0);
 }
-
-
-
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 affiche un message d'erreur et retoure false sinon. */
