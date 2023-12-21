@@ -103,17 +103,21 @@ void main_loop() {
     (*argsCapacity) = STARTING_ARGS_CAPACITY; // Est augmentée si nécessaire par parse_command.
     char** argsComm = malloc((*argsCapacity) * sizeof(char*)); // Stocke les différents arguments de la commande entrée.
     unsigned index; // Compte le nombre d'arguments dans la commande entrée.
+    //char * buffer = malloc(sizeof(char)*2);
     // Paramétrage readline.
     rl_outstream = stderr;
     using_history();
     // Boucle de récupération et de découpe des commandes.
     while (running) {
+        //free(buffer);
         // Nettoyage buffers.
         reset(argsComm, argsCapacity);
         free(strCommand);
         // Récupération de la commande entrée et affichage du prompt.
         char* tmp = getPrompt();
         strCommand = readline(tmp);
+        //buffer = malloc(sizeof(char)*strlen(strCommand));
+        //strcpy(buffer,strCommand);
         free(tmp);
         // Tests commande non vide.
         if (strCommand == NULL) {
@@ -127,11 +131,12 @@ void main_loop() {
             add_history(strCommand);
             index = parse_command(strCommand, argsComm, argsCapacity); // Découpage de la commande.
 
-            callRightCommand(argsComm, index, strCommand); //dans la commande jobs on a besoin du buffer
+            callRightCommand(argsComm, index,strCommand); //dans la commande jobs on a besoin du buffer
         }
     }
     // Libération de la mémoire allouée pour les buffers après terminaison.
     free(argsCapacity);
+    //free(buffer);
     free(strCommand);
     free(argsComm);
 }
@@ -327,7 +332,7 @@ void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool
 
 void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ) {
     int cpy_stin = dup(STDIN_FILENO);
-    int fd = open(pathname,O_WRONLY|O_APPEND,0777);
+    int fd = open(pathname,O_RDONLY,0777);
     if (fd == -1) {
         lastReturn = -1;
         return;
