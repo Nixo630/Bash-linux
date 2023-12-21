@@ -37,10 +37,14 @@ int main(int argc, char** argv) {
     // Libération des buffers
     free(previous_folder);
     free(current_folder);
-    free(l_jobs);
+    for (int i = 0; i < nbJobs; i++){
+        free(l_jobs[i].command_name);
+        free(l_jobs[i].state);
+    }
     for (int i = 0; i < nbJobs; i++) {
         kill(l_jobs[i].pid,SIGKILL);
     }
+    free(l_jobs);
     return lastReturn;
 }
 
@@ -79,6 +83,7 @@ void main_loop() {
         }
     }
     // Libération de la mémoire allouée pour les buffers après terminaison.
+    free(argsCapacity);
     free(strCommand);
     free(argsComm);
 }
@@ -93,6 +98,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-2] = NULL;
 
         entry_redirection(argsComm,nbArgs-2,buffer,path);
+        free(path);
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -101,6 +107,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-2] = NULL;
 
         simple_redirection(argsComm,nbArgs-2,buffer,false,path);
+        free(path);
+
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -109,6 +117,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-2] = NULL;
 
         simple_redirection(argsComm,nbArgs-2,buffer,true,path);
+        free(path);
+
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">|") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -117,6 +127,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-2] = NULL;
 
         overwritte_redirection(argsComm,nbArgs-2,buffer,false,path);
+        free(path);
+
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>|") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -125,6 +137,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-2] = NULL;
 
         overwritte_redirection(argsComm,nbArgs-2,buffer,true,path);
+        free(path);
+
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],">>") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -133,6 +147,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-2] = NULL;
 
         concat_redirection(argsComm,nbArgs-2,buffer,false,path);
+        free(path);
+
     }
     else if (nbArgs >= 2 && strcmp(argsComm[nbArgs-2],"2>>") == 0) {
         char* path = malloc(sizeof(char)*strlen(argsComm[nbArgs-1]));
@@ -141,6 +157,8 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* buffer) {
         argsComm[nbArgs-2] = NULL;
 
         concat_redirection(argsComm,nbArgs-2,buffer,true,path);
+        free(path);
+        
     }
     else if (strcmp(argsComm[0], "pwd") == 0) {
         if (correct_nbArgs(argsComm, 1, 1)) {
@@ -293,6 +311,7 @@ void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool erro
         callRightCommand(argsComm,nbArgs,buffer);
         dup2(second_flow,flow);
     }
+
     close(fd);
 }
 
