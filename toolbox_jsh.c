@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include "toolbox_jsh.h"
 
 // Vérifie que le pointeur passé en argument est différent de NULL.
@@ -33,6 +36,9 @@ int convert_str_to_int (char* string) {
     }
     free(tmp);
     free(string2);
+    if (string[0] == '%') {
+        return getpgid(int_args);
+    }
     return int_args;
 }
 
