@@ -46,7 +46,10 @@ int main(int argc, char** argv) {
 
 void main_loop() {
     // Initialisation buffers.
-    char* strInput = (char*) NULL; // Stocke la ligne de commande entrée par l'utilisateur.
+    char* strInput = (char*) NULL; // Stocke la ligne de commande entrée par l'utilisateur (allocation
+    // espace mémoire faite par readline).
+    Command command = malloc(sizeof(Command)); // Stocke toutes les informations relatives à la
+    // commande courante.
     char* strComm = (char*)NULL; // Stocke la première commande de la ligne entrée.
     size_t* argsCapacity = malloc(sizeof(size_t)); // Taille du tableau récupérant les arguments d'une commande.
     (*argsCapacity) = STARTING_ARGS_CAPACITY; // Est augmentée si nécessaire par parse_command.
@@ -73,17 +76,13 @@ void main_loop() {
         }
         // Traitement de la ligne de commande entrée.
         else {
-            add_history(strInput);
-            while(1) {
-                strComm = first_command(strInput);
-                if (strComm == NULL) {
-                    index = parse_command(strInput, argsComm, argsCapacity);
-                    callRightCommand(argsComm, index, strInput);
-                    break;
-                }
+            add_history(strInput); // Ajoute la ligne de commande entrée à l'historique.
+            strComm = first_command(strInput);
+            while(strComm != NULL) { // Boucle sur toutes les commandes de la ligne entrée.
                 index = parse_command(strComm, argsComm, argsCapacity);
                 callRightCommand(argsComm, index, strComm);
-                free(strComm);
+                free(strComm); // la mémoire de strComm est allouée par parse_command.
+                strComm = first_command(strInput);
             }
         }
     }

@@ -4,26 +4,29 @@
 #include "parsing_jsh.h"
 
 char* first_command(char* input) {
+    int len_input = strlen(input);
+    if (len_input == 0) return NULL;
+    int len_command = len_input; // Par défaut, on considère que l'input est constituée d'une seule commande.
+    char* strComm = malloc(sizeof(input));
     char* tmp = NULL;
     tmp = strstr(input, "|");
     if (tmp != NULL) {
-        char* strComm = malloc(sizeof(input));
-        int len_command = strlen(input) - strlen(tmp);
-        strncpy(strComm, input, len_command); // troncage de l'input à la première commande.
-        strcpy(input, tmp+1); // suppression de la commande extraite dans l'input.
-        return strComm;
+        len_command = len_input - strlen(tmp);
     } else {
         tmp = strstr(input, "&");
         if (tmp != NULL) {
-            char* strComm = malloc(sizeof(input));
-            int len_command = strlen(input) - strlen(tmp);
-            strncpy(strComm, input, len_command+1); // troncage de l'input à la première commande.
-            strcpy(input, tmp+1); // suppression de la commande extraite dans l'input.
-            return strComm;
+            len_command = strlen(input) - strlen(tmp);
         }
     }
-    return NULL;
+    strncpy(strComm, input, len_command); // copie de la première commande dans strComm.
+    memmove(input, input+len_command+1, (len_input - len_command)+1); // troncage de l'input.
+    // au niveau de la fin de la première commande.
+    return strComm;
 }
+
+// parse_redirections () {
+
+// }
 
 /* Prend une commande (string), un tableau de string et la taille de ce tableau en arguments.
 Stocke les différents arguments de la commande dans le tableau, en agrandissant sa taille
