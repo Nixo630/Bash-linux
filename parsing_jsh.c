@@ -81,14 +81,17 @@ argsComm et substitutions de la structure Command. */
 void parse_command(Command* command) {
     char* substitutions_tmp[MAX_NB_SUBSTITUTIONS]; // Stocke temporairement les strings des substitutions.
     printf("test12\n");
-    char* cpy = malloc(sizeof(command -> strComm)+1); /* On opère le parsing sur une copie de la string
+    char* cpy = malloc(MAX_NB_ARGS * 10); /* On opère le parsing sur une copie de la string
     de commande originelle */
     strcpy(cpy, command -> strComm);
     printf("test13,%s\n", cpy);
-    char* tmp = malloc(50); // Stocke temporairement les tokens.
+    char* tmp = malloc(50 * sizeof(char)); // Stocke temporairement les tokens.
+    printf("test13.1\n");
     char* inside_parentheses = malloc(MAX_NB_ARGS * 10); // Stocke la commande qui constitue une substitution.
+    printf("test13.1\n");
     strcpy(inside_parentheses, "");
-    command -> argsComm = malloc(MAX_NB_ARGS * sizeof(char*));
+    printf("test13.1\n");
+    command -> argsComm = malloc(MAX_NB_ARGS);
     unsigned index = 0; // Nombre de tokens.
     command -> argsComm[index] = malloc(50);
     printf("test14\n");
