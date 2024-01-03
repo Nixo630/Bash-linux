@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include "parsing_jsh.h"
 
-// ls | pwd | cmd <() <() | ls
-// cmd <() <( cmd2 <() <() | ls) | ls | pwd
-// ./my_cat <( ./my_cat <( ./my_cat <( ./my_cat <( echo 123 | cat ) | tail ) ) )
 
+/* Prend en argument une string correspondant à une commande ou à une pipeline et renvoie une structure
+Command associée, avec dans ses champs les structures Command associées à son input et aux substitutions
+qu'elle utilise. */
 Command* getCommand(char* input) {
     Command* pipeline[MAX_LENGTH_PIPELINE]; // Tableau pour stocker temporairement les commandes de la pipeline.
     unsigned index = 0;
@@ -55,10 +55,11 @@ char* first_command(char* input) {
     return strComm;
 }
 
-/* Prend une commande en argument.
-Stocke les différents arguments de la commande dans le champ argsComm. */
+/* Prend en argument une structure Command initialisée avec seulement une string de commande, et parse
+ses arguments (strings) et ses substitutions (Command), en les mettant respectivement dans les champs
+argsComm et substitutions de la structure Command. */
 void parse_command(Command* command) {
-    char* substitutions_tmp[MAX_NB_SUBSTITUTIONS];
+    char* substitutions_tmp[MAX_NB_SUBSTITUTIONS]; // Stocke temporairement les strings des substitutions.
     char* cpy = malloc(sizeof(command -> strComm)+1); /* On opère le parsing sur une copie de la string
     de commande originelle */
     strcpy(cpy, command -> strComm);
@@ -72,51 +73,47 @@ void parse_command(Command* command) {
     while (1) { // Boucle sur les mots de la commande.
         if (index == (MAX_NB_ARGS)-1) { // Erreur si la commande contient trop de mots.
             fprintf(stderr,"bash : %s: too many arguments\n", command -> argsComm[0]);
+            exit(-1);
         }
         tmp = strtok(NULL, " ");
         if (tmp == NULL) break;
         command -> argsComm[index] = malloc(50);
-        // if (strcmp(tmp, "<(") == 0) {
-        //     unsigned nb_parentheses_ouvrantes = 1;
-        //     unsigned nb_parentheses_fermantes = 0;
-        //     while(1) {
-        //         tmp = strtok(NULL, " ");
-        //         if (tmp == NULL) {
-        //             fprintf(stderr,"Commande %s: Parenthèses mal formées.\n", command -> argsComm[0]);
-        //             break;
-        //         }
-        //         printf("%s,\n", tmp);
-        //         if (strcmp(tmp, "<(") == 0) nb_parentheses_ouvrantes++;
-        //         if (strcmp(tmp, ")") == 0) nb_parentheses_fermantes++;
-        //         if (nb_parentheses_ouvrantes != nb_parentheses_fermantes) {
-        //             strcat(inside_parentheses, tmp);
-        //             strcat(inside_parentheses, " ");
-        //             printf("test24\n");
-        //         } else break;
-        //     }
-        //     printf("test55\n");
-        //     strcpy(command -> argsComm[index], "fifo");
-        //     // command -> substitutions[command -> nbSubstitutions] = getCommand(inside_parentheses);
-        //     substitutions_tmp[command -> nbSubstitutions] = malloc(100);
-        //     strcpy(substitutions_tmp[command -> nbSubstitutions], inside_parentheses);
-        //     command -> nbSubstitutions++;
-        // } else
-        strcpy(command -> argsComm[index],tmp);
+        if (strcmp(tmp, "<(") == 0) {
+            unsigned nb_parentheses_ouvrantes = 1;
+            unsigned nb_parentheses_fermantes = 0;
+            while(1) {
+                tmp = strtok(NULL, " ");
+                if (tmp == NULL) {
+                    fprintf(stderr,"Commande %s: Parenthèses mal formées.\n", command -> argsComm[0]);
+                    exit(-1);
+                }
+                if (strcmp(tmp, "<(") == 0) nb_parentheses_ouvrantes++;
+                if (strcmp(tmp, ")") == 0) nb_parentheses_fermantes++;
+                if (nb_parentheses_ouvrantes != nb_parentheses_fermantes) {
+                    strcat(inside_parentheses, tmp);
+                    strcat(inside_parentheses, " ");
+                } else break;
+            }
+            strcpy(command -> argsComm[index], "fifo");
+            substitutions_tmp[command -> nbSubstitutions] = malloc(100);
+            strcpy(substitutions_tmp[command -> nbSubstitutions], inside_parentheses);
+            command -> nbSubstitutions++;
+        } else strcpy(command -> argsComm[index],tmp);
         ++index;
     }
     command -> nbArgs = index;
     free(tmp);
     free(cpy);
-    free(inside_parentheses);
     // On crée des commandes à partir des substitutions récupérées. On le fait maintenant, à la fin de la
     // fonction, pour ne pas interrompre strtok.
     for (int i = 0; i < command -> nbSubstitutions; ++i) {
         command -> substitutions[i] = getCommand(substitutions_tmp[i]);
         free(substitutions_tmp[i]);
     }
-    free(substitutions_tmp);
 }
 
+/* Affiche une commande, son input (commande qui la précède dans une pipeline), et les substitutions qu'elle
+utilise */
 void print_command(Command* command) {
     printf("strComm: %s\n", command -> strComm);
     printf("nbArgs:%i\n", command -> nbArgs);
@@ -145,30 +142,3 @@ void free_command(Command* command) {
     free(command -> argsComm);
     free(command);
 }
-
-/* Modifie la string passée en argument pour qu'elle pointe vers le caractère suivant la parenthèse matchante,
-et renvoie la string qui était dans les parenthèses. */
-// char* find_matching_parenthese(char* buffer) {
-//     char* after_first = strstr(buffer, "<(")+2;
-//     unsigned len_after_first = strlen(after_first);
-//     unsigned nb_parentheses_ouvrantes = 1, nb_parentheses_fermantes = 0;
-//     for (int i = 0; i < len_after_first; ++i) {
-//         if (after_first[i] == '(') nb_parentheses_ouvrantes++;
-//         if (after_first[i] == ')') {
-//             nb_parentheses_fermantes++;
-//             if (nb_parentheses_ouvrantes == nb_parentheses_fermantes) {
-//                 buffer = after_first[i]+1;
-//                 after_first[i] = '\0';
-//                 break;
-//             }
-//         }
-//     }
-//     return after_first;
-// }
-
-// Nettoie le tableau stockant les arguments d'une commande.
-// void reset(char** args, size_t* len) {
-//     for (int i = 0; i < *len; i++) {
-//         args[i] = NULL;
-//     }
-// }
