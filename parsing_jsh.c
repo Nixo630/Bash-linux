@@ -7,7 +7,7 @@
 
 /* Prend en argument une string correspondant à une commande ou à une pipeline et renvoie une structure
 Command associée, avec dans ses champs les structures Command associées à son input et aux substitutions
-qu'elle utilise. */
+quOB'elle utilise. */
 Command* getCommand(char* input) {
     printf("test1\n");
     Command* pipeline[MAX_LENGTH_PIPELINE]; // Tableau pour stocker temporairement les commandes de la pipeline.
@@ -16,6 +16,7 @@ Command* getCommand(char* input) {
     printf("test8\n");
     do { // Pour chaque commande de la pipeline.
         pipeline[index] = malloc(sizeof(Command));
+	printf("test8bis\n");
         pipeline[index] -> strComm = malloc(MAX_NB_ARGS * 10);
         printf("test9\n");
         strcpy(pipeline[index] -> strComm, firstCommand);
@@ -36,11 +37,12 @@ Command* getCommand(char* input) {
 
 // Renvoie la première commande de la ligne de commande (éventuellement une pipeline) passée en argument.
 char* first_command(char* input) {
-    printf("test2\n");
+  printf("test2, string input:%s\n", input);
     unsigned len_input = strlen(input);
+    printf("test2,%i\n", len_input);
     if (len_input == 0) return NULL;
     unsigned len_command = len_input; // Par défaut, on considère que l'input est constituée d'une seule commande.
-    char* strComm = malloc(sizeof(input));
+    char* strComm = malloc(sizeof(input)+5);
     char* first_bar_adress = (char*) NULL;
     // Recherche de la première occurence du caractère | qui ne soit pas à l'intérieur d'une substitution.
     unsigned nb_parentheses_ouvrantes = 0;
@@ -55,14 +57,19 @@ char* first_command(char* input) {
         if (input[i] == ')') nb_parentheses_fermantes++;
     }
     if (first_bar_adress != NULL) {
-        printf("test4\n");
+        printf("test4,first_bar_adress:%s.\n", first_bar_adress);
         len_command = len_input - strlen(first_bar_adress);
         printf("test5\n");
+	strncpy(strComm, input, len_command); // copie de la première commande dans strComm. 
+	strComm[len_command] = '\0';
+	memmove(input, input+len_command+1,strlen(first_bar_adress));
+    } else {
+      strcpy(strComm, input);
+      memset(input,0,len_input);
     }
-    printf("test6\n");
-    strncpy(strComm, input, len_command); // copie de la première commande dans strComm.
-    printf("test7\n");
-    memmove(input, input+len_command+1, (len_input - len_command)+1); // troncage de l'input.
+    //strncpy(strComm, input, len_command); // copie de la première commande dans strComm.
+    //strComm[len_command] = '\0';
+    //memmove(input, input+len_command+1,len_command+1); // troncage de l'input.
     // au niveau de la fin de la première commande.
     return strComm;
 }
@@ -79,6 +86,7 @@ void parse_command(Command* command) {
     printf("test13\n");
     char* tmp = malloc(50); // Stocke temporairement les tokens.
     char* inside_parentheses = malloc(100); // Stocke la commande qui constitue une substitution.
+    strcpy(inside_parentheses, "");
     command -> argsComm = malloc(MAX_NB_ARGS * sizeof(char*));
     unsigned index = 0; // Nombre de tokens.
     command -> argsComm[index] = malloc(50);
@@ -101,6 +109,7 @@ void parse_command(Command* command) {
             while(1) {
                 printf("test17\n");
                 tmp = strtok(NULL, " ");
+		printf("%s,%i,%i\n",tmp, nb_parentheses_ouvrantes,nb_parentheses_fermantes);
                 if (tmp == NULL) {
                     fprintf(stderr,"Commande %s: Parenthèses mal formées.\n", command -> argsComm[0]);
                     exit(-1);
@@ -110,6 +119,7 @@ void parse_command(Command* command) {
                 if (nb_parentheses_ouvrantes != nb_parentheses_fermantes) {
                     strcat(inside_parentheses, tmp);
                     strcat(inside_parentheses, " ");
+		    printf("inside:%s\n", inside_parentheses);
                 } else break;
             }
             printf("test18\n");
@@ -124,6 +134,7 @@ void parse_command(Command* command) {
     command -> nbArgs = index;
     free(tmp);
     free(cpy);
+    free(inside_parentheses);
     printf("test20\n");
     // On crée des commandes à partir des substitutions récupérées. On le fait maintenant, à la fin de la
     // fonction, pour ne pas interrompre strtok.
