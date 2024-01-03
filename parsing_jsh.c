@@ -13,14 +13,15 @@ Command* getCommand(char* input) {
     Command* pipeline[MAX_LENGTH_PIPELINE]; // Tableau pour stocker temporairement les commandes de la pipeline.
     unsigned index = 0;
     char* firstCommand = first_command(input);
-    printf("test8\n");
+    printf("test8,fc:%s\n", firstCommand);
     do { // Pour chaque commande de la pipeline.
         pipeline[index] = malloc(sizeof(Command));
-	printf("test8bis\n");
+	    printf("test8bis\n");
         pipeline[index] -> strComm = malloc(MAX_NB_ARGS * 10);
+        // strcpy(pipeline[index] -> strComm, "");
         printf("test9\n");
         strcpy(pipeline[index] -> strComm, firstCommand);
-        printf("test10\n");
+        printf("test10,strComm:%s\n", pipeline[index] -> strComm);
         free(firstCommand);
         printf("test11\n");
         parse_command(pipeline[index]);
@@ -42,7 +43,7 @@ char* first_command(char* input) {
     printf("test2,%i\n", len_input);
     if (len_input == 0) return NULL;
     unsigned len_command = len_input; // Par défaut, on considère que l'input est constituée d'une seule commande.
-    char* strComm = malloc(sizeof(input)+5);
+    char* strComm = malloc(MAX_NB_ARGS * 10);
     char* first_bar_adress = (char*) NULL;
     // Recherche de la première occurence du caractère | qui ne soit pas à l'intérieur d'une substitution.
     unsigned nb_parentheses_ouvrantes = 0;
@@ -60,9 +61,9 @@ char* first_command(char* input) {
         printf("test4,first_bar_adress:%s.\n", first_bar_adress);
         len_command = len_input - strlen(first_bar_adress);
         printf("test5\n");
-	strncpy(strComm, input, len_command); // copie de la première commande dans strComm. 
-	strComm[len_command] = '\0';
-	memmove(input, input+len_command+1,strlen(first_bar_adress));
+        strncpy(strComm, input, len_command); // copie de la première commande dans strComm. 
+        strComm[len_command] = '\0';
+        memmove(input, input+len_command+1,strlen(first_bar_adress));
     } else {
       strcpy(strComm, input);
       memset(input,0,len_input);
@@ -83,9 +84,9 @@ void parse_command(Command* command) {
     char* cpy = malloc(sizeof(command -> strComm)+1); /* On opère le parsing sur une copie de la string
     de commande originelle */
     strcpy(cpy, command -> strComm);
-    printf("test13\n");
+    printf("test13,%s\n", cpy);
     char* tmp = malloc(50); // Stocke temporairement les tokens.
-    char* inside_parentheses = malloc(100); // Stocke la commande qui constitue une substitution.
+    char* inside_parentheses = malloc(MAX_NB_ARGS * 10); // Stocke la commande qui constitue une substitution.
     strcpy(inside_parentheses, "");
     command -> argsComm = malloc(MAX_NB_ARGS * sizeof(char*));
     unsigned index = 0; // Nombre de tokens.
@@ -109,22 +110,24 @@ void parse_command(Command* command) {
             while(1) {
                 printf("test17\n");
                 tmp = strtok(NULL, " ");
-		printf("%s,%i,%i\n",tmp, nb_parentheses_ouvrantes,nb_parentheses_fermantes);
                 if (tmp == NULL) {
                     fprintf(stderr,"Commande %s: Parenthèses mal formées.\n", command -> argsComm[0]);
                     exit(-1);
                 }
                 if (strcmp(tmp, "<(") == 0) nb_parentheses_ouvrantes++;
                 if (strcmp(tmp, ")") == 0) nb_parentheses_fermantes++;
+                printf("%s,%i,%i\n",tmp, nb_parentheses_ouvrantes,nb_parentheses_fermantes);
                 if (nb_parentheses_ouvrantes != nb_parentheses_fermantes) {
                     strcat(inside_parentheses, tmp);
                     strcat(inside_parentheses, " ");
-		    printf("inside:%s\n", inside_parentheses);
-                } else break;
+		            printf("inside:%s\n", inside_parentheses);
+                } else {
+                    break;
+                }
             }
             printf("test18\n");
             strcpy(command -> argsComm[index], "fifo");
-            substitutions_tmp[command -> nbSubstitutions] = malloc(100);
+            substitutions_tmp[command -> nbSubstitutions] = malloc(MAX_NB_ARGS * 10);
             strcpy(substitutions_tmp[command -> nbSubstitutions], inside_parentheses);
             printf("test19\n");
             command -> nbSubstitutions++;
