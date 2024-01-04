@@ -7,7 +7,7 @@
 struct Command {
     char* strComm; // La string de commande.
     char** argsComm; /* Les différents arguments de la commande (avec la string "fifo" aux
-    emplacements des futures éventuels tubes nommés). */
+    emplacements des futures éventuels tubes nommés, et sans les éventuelles redirections et symbole '&'). */
     unsigned args_to_fill[MAX_NB_SUBSTITUTIONS]; // Les indices des arguments à remplacer par un tube nommé.
     unsigned nbArgs; // Le nombre d'arguments de la commande.
     //int in_out_err[3]; /* Les descripteurs des fichiers sur lesquels rediriger l'entrée, la sortie,
@@ -25,7 +25,8 @@ typedef struct Command Command;
 // Fonctions
 Command* getCommand(char* input);
 char* first_command(char* input);
-int parse_redirections(Command* command);
 int parse_command(Command* command);
+int parse_redirections(Command* command);
+int is_redirection_symbol(char* string);
 void print_command(Command* command);
 void free_command(Command* command);

@@ -18,7 +18,7 @@ Command* getCommand(char* input) {
         pipeline[index] -> strComm = malloc(MAX_NB_ARGS * 10);
         strcpy(pipeline[index] -> strComm, firstCommand);
         free(firstCommand);
-        if (parse_redirections(pipeline[index]) == -1 || parse_command(pipeline[index]) == -1) {
+        if (parse_command(pipeline[index]) == -1 || parse_redirections(pipeline[index]) == -1) {
             error = true;
             break;
         }
@@ -65,111 +65,6 @@ char* first_command(char* input) {
       memset(input,0,len_input);
     }
     return strComm;
-}
-
-/* Découpe les éventuels symboles de redirection et les fichiers sur lequels rediriger, et l'éventuel
-symbole '&', et remplit en conséquence les champs correspondant dans la structure Command passée en
-argument. */
-int parse_redirections(Command* command) {
-    char* cpy = malloc(MAX_NB_ARGS * 10); /* On opère le parsing sur une copie de la string
-    de commande originelle */
-    strcpy(cpy, command -> strComm);
-    char* new_strComm = malloc(MAX_NB_ARGS * 10);
-    char* tmp = malloc(50 * sizeof(char)); // Stocke temporairement les tokens.
-    bool waiting_for_file_in = false, waiting_for_file_out = false, waiting_for_file_err = false;
-    bool waiting_for_end = false;
-    tmp = strtok(cpy, " ");
-    strcat(new_strComm, tmp);
-    strcat(new_strComm, " ");
-    int returnValue = 0;
-    while(1) {
-        tmp = strtok(NULL, " ");
-        if (tmp == NULL) break;
-        else if (waiting_for_end) {
-            fprintf(stderr,"bash : symbole '&' mal placé.\n");
-            returnValue = -1;
-            break;
-        } else if (waiting_for_file_in) {
-            command -> in_redir[1] = malloc(50);
-            strcpy(command -> in_redir[1], tmp);
-            waiting_for_file_in = false;
-        } else if (waiting_for_file_out) {
-            command -> out_redir[1] = malloc(50);
-            strcpy(command -> out_redir[1], tmp);
-            waiting_for_file_out = false;
-        } else if (waiting_for_file_err) {
-            command -> err_redir[1] = malloc(50);
-            strcpy(command -> err_redir[1], tmp);
-            waiting_for_file_err = false;
-        } else if (!strcmp(tmp,"<")) {
-            if (command -> in_redir != NULL) {
-                fprintf(stderr,"bash : trop de redirection de l'entrée.\n");
-                returnValue = -1;
-                break;
-            }
-            command -> in_redir = malloc(2 * sizeof(char*));
-            command -> in_redir[0] = malloc(10);
-            strcpy(command -> in_redir[0], tmp);
-            waiting_for_file_in = true;
-        } else if (!strcmp(tmp, ">") || !strcmp(tmp, ">|") || !strcmp(tmp, ">>")) {
-            if (command -> out_redir != NULL) {
-                fprintf(stderr,"bash : trop de redirection de la sortie.\n");
-                returnValue = -1;
-                break;
-            }
-            command -> out_redir = malloc(2 * sizeof(char*));
-            command -> out_redir[0] = malloc(10);
-            strcpy(command -> out_redir[0], tmp);
-            waiting_for_file_out = true;
-        } else if (!strcmp(tmp, "2>") || !strcmp(tmp, "2>|") || !strcmp(tmp, "2>>")) {
-            if (command -> err_redir != NULL) {
-                fprintf(stderr,"bash : trop de redirection de la sortie erreur.\n");
-                returnValue = -1;
-                break;
-            }
-            command -> err_redir = malloc(2 * sizeof(char*));
-            command -> err_redir[0] = malloc(10);
-            strcpy(command -> err_redir[0], tmp);
-            waiting_for_file_err = true;
-        } else if (!strcmp(tmp, "&")) {
-            command -> background = true;
-            waiting_for_end = true;
-        } else if (!strcmp(tmp, "<(")) {
-            // Si on entre dans une substitution, on saute tous les tokens jusqu'à la fin de celle-ci.
-            strcat(new_strComm, tmp);
-            strcat(new_strComm, " ");
-            unsigned nb_parentheses_ouvrantes = 1, nb_parentheses_fermantes = 0;
-            while (1) {
-                tmp = strtok(NULL, " ");
-                if (tmp == NULL) {
-                    fprintf(stderr,"Bash: Parenthèses mal formées.\n");
-                    returnValue = -1;
-                    break;
-                }
-                if (strcmp(tmp, "<(") == 0) nb_parentheses_ouvrantes++;
-                if (strcmp(tmp, ")") == 0) nb_parentheses_fermantes++;
-                strcat(new_strComm, tmp);
-                strcat(new_strComm, " ");
-                if (nb_parentheses_ouvrantes == nb_parentheses_fermantes) {
-                    break;
-                }
-            }
-        } else {
-            strcat(new_strComm, tmp);
-            strcat(new_strComm, " ");
-        }
-        if (returnValue == -1) break;
-    }
-    if (waiting_for_file_in || waiting_for_file_out || waiting_for_file_err) {
-        fprintf(stderr,"bash : %s: fichier de redirection manquant.\n", command -> argsComm[0]);
-        returnValue = -1;
-    }
-    strcpy(command -> strComm, new_strComm);
-    if (returnValue == -1) tmp = NULL;
-    free(tmp);
-    free(cpy);
-    free(new_strComm);
-    return returnValue;
 }
 
 /* Prend en argument une structure Command initialisée avec seulement une string de commande, et parse
@@ -238,6 +133,98 @@ int parse_command(Command* command) {
     return returnValue;
 }
 
+/* Découpe les éventuels symboles de redirection et les fichiers sur lequels rediriger, et l'éventuel
+symbole '&', et remplit en conséquence les champs correspondant dans la structure Command passée en
+argument. */
+int parse_redirections(Command* command) {
+    unsigned returnValue = 0;
+    if (command -> argsComm == NULL) return -1;
+    unsigned args_removed = 0;
+    for (unsigned i = 0; i < command -> nbArgs; ++i) {
+        if (command -> argsComm[i] == NULL) break;
+        if (!strcmp(command -> argsComm[i], "&")) {
+            if (i != command -> nbArgs-1) { // Si '&' n'est pas le dernier mot de la commande.
+                fprintf(stderr,"Commande %s: Symbole '&' mal placé.\n", command -> argsComm[0]);
+                returnValue = -1;
+                break;
+            } else {
+                command -> background = true;
+                command -> argsComm[i] = NULL;
+                free(command -> argsComm[i]);
+                args_removed++;
+            }
+        }
+        int redirection_value = is_redirection_symbol(command -> argsComm[i]);
+        if (redirection_value != -1) {
+            if (command -> argsComm[i+1] == NULL || !strcmp(command -> argsComm[i+1], "fifo") ||
+                is_redirection_symbol(command -> argsComm[i+1]) != -1) {
+                fprintf(stderr,"Commande %s: Symbole de redirection non suivi d'un nom de fichier.\n", command -> argsComm[0]);
+                returnValue = -1;
+                break;
+            }
+            switch (redirection_value) {
+                case 0: // Cas d'un symbole de redirection d'entrée.
+                    if (command -> in_redir != NULL) {
+                        fprintf(stderr,"Commande %s: Trop de redirections de l'entrée.\n", command -> argsComm[0]);
+                        return -1;
+                    }
+                    command -> in_redir = malloc(2 * sizeof(char*));
+                    command -> in_redir[0] = malloc(10);
+                    strcpy(command -> in_redir[0], command -> argsComm[i]);
+                    command -> in_redir[1] = malloc(50);
+                    strcpy(command -> in_redir[1], command -> argsComm[i+1]);
+                    break;
+                case 1: // Cas d'un symbole de redirection de sortie.
+                    if (command -> out_redir != NULL) {
+                        fprintf(stderr,"Commande %s: Trop de redirections de la sortie.\n", command -> argsComm[0]);
+                        returnValue = -1;
+                        break;
+                    }
+                    command -> out_redir = malloc(2 * sizeof(char*));
+                    command -> out_redir[0] = malloc(10);
+                    strcpy(command -> out_redir[0], command -> argsComm[i]);
+                    command -> out_redir[1] = malloc(50);
+                    strcpy(command -> out_redir[1], command -> argsComm[i+1]);
+                    break;
+                case 2: // Cas d'un symbole de redirection de sortie erreur.
+                    if (command -> err_redir != NULL) {
+                        fprintf(stderr,"Commande %s: Trop de redirections de la sortie erreur.\n", command -> argsComm[0]);
+                        returnValue = -1;
+                        break;
+                    }
+                    command -> err_redir = malloc(2 * sizeof(char*));
+                    command -> err_redir[0] = malloc(10);
+                    strcpy(command -> err_redir[0], command -> argsComm[i]);
+                    command -> err_redir[1] = malloc(50);
+                    strcpy(command -> err_redir[1], command -> argsComm[i+1]);
+                    break;
+            }
+            // Décalage du reste des arguments de deux cases vers la gauche.
+            for (int j = i+2; j < command -> nbArgs - args_removed; ++j) {
+                strcpy(command -> argsComm[j-2], command -> argsComm[j]);
+            }
+            // Mise à NULL et libération des deux dernières cases d'arguments non-nulles.
+            command -> argsComm[command -> nbArgs - args_removed-1] = NULL;
+            free(command -> argsComm[command -> nbArgs - args_removed-1]);
+            command -> argsComm[command -> nbArgs - args_removed-2] = NULL;
+            free(command -> argsComm[command -> nbArgs - args_removed-1]);
+            args_removed += 2;
+            i--;
+        }
+    }
+    command -> nbArgs -= args_removed;
+    return returnValue;
+}
+
+/* Suivant si la string passée en argument est un symbole de redirection d'entrée, de sortie, de sortie
+erreur ou n'est pas un symbole de redirection, la fonction renvoie respectivement la valeur 0,1,2 ou -1.*/
+int is_redirection_symbol(char* string) {
+    if (!strcmp(string, "<")) return 0;
+    else if (!strcmp(string, ">") || !strcmp(string, ">|") || !strcmp(string, ">>")) return 1;
+    else if (!strcmp(string, "2>") || !strcmp(string, "2>|") || !strcmp(string, "2>>")) return 2;
+    else return -1;
+}
+
 /* Affiche une commande, son input (commande qui la précède dans une pipeline), et les substitutions qu'elle
 utilise */
 void print_command(Command* command) {
@@ -251,15 +238,9 @@ void print_command(Command* command) {
     }
     printf("%s\n",command -> argsComm[command -> nbArgs-1]);
     // Affichage entrée, sortie et sortie erreur standard de la commande.
-    if (command -> in_redir != NULL) {
-        printf("Entrée: %s %s\n", command -> in_redir[0], command -> in_redir[1]);
-    }
-    if (command -> out_redir != NULL) {
-        printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
-    }
-    if (command -> err_redir != NULL) {
-        printf("Sortie erreur: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
-    }
+    if (command -> in_redir != NULL) printf("Entrée: %s %s\n", command -> in_redir[0], command -> in_redir[1]);
+    if (command -> out_redir != NULL) printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
+    if (command -> err_redir != NULL) printf("Sortie erreur: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
     // Affichage input de la commande.
     if (command -> input != NULL) {
         printf("INPUT:\n");
