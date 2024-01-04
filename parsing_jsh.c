@@ -245,17 +245,14 @@ void print_command(Command* command) {
     if (command -> out_redir != NULL) printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
     if (command -> err_redir != NULL) printf("Sortie erreur: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
     // Affichage input de la commande.
-    if (command -> input != NULL) {
-        printf("INPUT:\n");
-        print_command(command -> input);
-    } else printf("Input: aucune\n");
+    printf("Input: %s\n", command -> input == NULL ? "aucune" : command -> argsComm[0]);
      // Affichage substitutions qu'utilise la commande.
     if (command -> nbSubstitutions > 0) {
-        printf("SUBSTITUTIONS:\n");
         printf("nbSubstitutions: %i\n", command -> nbSubstitutions);
-    }
-    for (int i = 0; i < command -> nbSubstitutions; ++i) {
-        print_command(command -> substitutions[i]);
+        for (int i = 0; i < command -> nbSubstitutions-1; ++i) {
+            printf("%s, ", command -> substitutions[i] -> argsComm[0]);
+        }
+        printf("%s\n", command -> substitutions[command -> nbSubstitutions-1] -> argsComm[0]);
     }
 }
 

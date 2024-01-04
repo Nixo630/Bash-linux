@@ -70,70 +70,180 @@ void main_loop() {
         else {
             add_history(strInput); // Ajoute la ligne de commande entrée à l'historique.
             Command* command = getCommand(strInput);
-            if (command != NULL) print_command(command);
+            if (command != NULL) executeCommand(command, NULL);
         }
     }
     // Libération de la mémoire allouée par readline.
     free(strInput);
 }
 
-void executeCommand(Command* command) {
-    // exécute les événtuelles input et substitutions et fait les fifo;
+void executeCommand(Command* command, char* fifo_out_name) {
+    char* fifo_in_name = (char*) NULL;
+    if (command -> input != NULL) { // Si la commande a une input (dans le contexte d'une pipeline).
+        fifo_in_name = malloc(20);
+        strcpy(fifo_in_name, "fifo_in");
+        mkfifo(fifo_in_name, 0666);
+        executeCommand(command -> input, fifo_in_name);
+    }
+    unsigned cpt = 0;
+    for (int i = 0; i < command -> nbArgs; ++i) { // Pour toutes les éventuelles substitutions que la commande utilise.
+        if (!strcmp(command -> argsComm[i], "fifo")) {
+            char* fifo_name = malloc(20);
+            sprintf(fifo_name, "fifo%i", cpt);
+            mkfifo(fifo_name, 0666);
+            strcpy(command -> argsComm[i], fifo_name);
+            executeCommand(command -> substitutions[i], fifo_name);
+            free(fifo_name);
+        }
+        cpt++;
+    }
+    apply_redirections(command, fifo_in_name, fifo_out_name);
+    if (fifo_in_name != NULL) {
+        unlink(fifo_in_name);
+        free(fifo_in_name);
+    }
+    // Libération de la mémoire allouée pour la commande.
+    free_command(command);
 }
 
+void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_name) {
+    int cpy_stdin, cpy_stdout, cpy_stderr;
+    int fd_in = -1, fd_out = -1, fd_err = -1;
+
+    // Redirection entrée.
+    if (fifo_in_name != NULL) { // Si l'entrée est sur un tube nommé.
+        if (command -> in_redir != NULL) {
+            fprintf(stderr, "command %s: redirection entrée impossible", command -> argsComm[0]);
+        } else {
+            cpy_stdin = dup(0);
+            fd_in = open(fifo_in_name, O_RDONLY | O_NONBLOCK);
+            dup2(fd_in, 0);
+            close(fd_in);
+        }
+    } else if (command -> in_redir != NULL) { // Si l'entrée est sur un fichier.
+        cpy_stdin = dup(0);
+        if (!strcmp(command -> in_redir[0], "<")) {
+            fd_in = open(command -> in_redir[1], O_RDONLY, 0777);
+        }
+        dup2(fd_in, 0);
+        close(fd_in);
+    }
+
+    // Redirection sortie.
+    if (fifo_out_name != NULL) { // Si la sortie est un tube nommé.
+        if (command -> out_redir != NULL) {
+            fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
+        } else {
+            if (is_internal(command -> argsComm[0])) {
+                cpy_stdout = dup(1);
+                fd_out = open(fifo_out_name, O_WRONLY | O_NONBLOCK);
+                dup2(fd_out, 1);
+                close(fd_out);
+            } else { // Cas où la commande est externe.
+                cpy_stdout = dup(1);
+                // Le reste de la redirection est faite dans external_command().
+            }
+        }
+    } else if (command -> out_redir != NULL) { // Si la sortie est un fichier.
+        cpy_stdout = dup(1);
+        if (!strcmp(command -> out_redir[0], ">")) {
+            fd_out = open(command -> out_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0777);
+        } else if (!strcmp(command -> out_redir[0], ">|")) {
+            fd_out = open(command -> out_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0777);
+        } else if (!strcmp(command -> out_redir[0], ">|")) {
+            fd_out = open(command -> out_redir[1], O_WRONLY|O_APPEND|O_CREAT, 0777);
+        }
+        dup2(fd_out, 1);
+        close(fd_out);
+    }
+
+    // Redirection sortie erreur.
+    if (command -> err_redir != NULL) { // Si la sortie erreur est un fichier.
+        cpy_stderr = dup(2);
+        if (!strcmp(command -> err_redir[0], "2>")) {
+            fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0777);
+        } else if (!strcmp(command -> err_redir[0], "2>|")) {
+            fd_err = open(command -> err_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0777);
+        } else if (!strcmp(command -> err_redir[0], "2>|")) {
+            fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT, 0777);
+        }
+        dup2(cpy_stderr, 2);
+        close(fd_err);
+    }
+
+    // Appel à l'exécution de la commande.
+    if (is_internal(command -> argsComm[0])) {
+        callRightCommand(command);
+    }
+    else external_command(command, fifo_out_name);
+
+    // Remise en état.
+    if (fd_in != -1) dup2(cpy_stdin, 0);
+    // if (fd_out != -1) dup2(cpy_stdout, 1);
+    if (fd_out != -1) {dup2(cpy_stdout, 1);printf("here\n");}
+    if (fd_err != -1) dup2(cpy_stderr, 2);
+}
+
+/* Renvoie true ou false suivant si la commande dont le nom est passé en argument est interne
+(ne nécessite pas d'appel à execvp) ou non. */
+bool is_internal(char* command_name) {
+    if (!strcmp(command_name, "pwd") || !strcmp(command_name, "cd") || !strcmp(command_name, "?") ||
+    !strcmp(command_name, "jobs") || !strcmp(command_name, "kill") || !strcmp(command_name, "exit")) return true;
+    else return false;
+}
 
 // Exécute la bonne commande à partir des mots donnés en argument.
-void callRightCommand(char** argsComm, unsigned nbArgs, char* strComm) {
+void callRightCommand(Command* command) {
     // Commande pwd
-    if (strcmp(argsComm[0], "pwd") == 0) {
-        if (correct_nbArgs(argsComm, 1, 1)) {
+    if (strcmp(command -> argsComm[0], "pwd") == 0) {
+        if (correct_nbArgs(command -> argsComm, 1, 1)) {
             char* path = pwd();
             printf("%s\n",path);
             free(path);
         }
     }
     // Commande cd
-    else if (strcmp(argsComm[0], "cd") == 0) {
-        if (correct_nbArgs(argsComm, 1, 2)) {
-            if (argsComm[1] == NULL || strcmp(argsComm[1],"$HOME") == 0) {
+    else if (strcmp(command -> argsComm[0], "cd") == 0) {
+        if (correct_nbArgs(command -> argsComm, 1, 2)) {
+            if (command -> argsComm[1] == NULL || strcmp(command -> argsComm[1],"$HOME") == 0) {
                 char* home = getenv("HOME");
                 cd(home);
             }
-            else if (strcmp(argsComm[1],"-") == 0) cd(previous_folder);
-            else cd(argsComm[1]);
+            else if (strcmp(command -> argsComm[1],"-") == 0) cd(previous_folder);
+            else cd(command -> argsComm[1]);
         }
     }
     // Commande ?
-    else if (strcmp(argsComm[0],"?") == 0) {
-        if (correct_nbArgs(argsComm, 1, 1)) {
+    else if (strcmp(command -> argsComm[0],"?") == 0) {
+        if (correct_nbArgs(command -> argsComm, 1, 1)) {
             printf("%d\n",question_mark());
             lastReturn = 0;
         }
     }
     // Commande jobs
-    else if (strcmp(argsComm[0],"jobs") == 0) {
-        if (correct_nbArgs(argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
+    else if (strcmp(command -> argsComm[0],"jobs") == 0) {
+        if (correct_nbArgs(command -> argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
             print_jobs();
             lastReturn = 0;
         }
     }
     // Commande kill
-    else if (strcmp(argsComm[0],"kill") == 0) {
-        if (correct_nbArgs(argsComm, 2, 3)) {
-            lastReturn = killJob(argsComm[1],argsComm[2]);
+    else if (strcmp(command -> argsComm[0],"kill") == 0) {
+        if (correct_nbArgs(command -> argsComm, 2, 3)) {
+            lastReturn = killJob(command -> argsComm[1],command -> argsComm[2]);
             if (lastReturn == -1) {
                 perror(NULL);
             }
         }
     }
     // Commande exit
-    else if (strcmp(argsComm[0], "exit") == 0) {
-        if (correct_nbArgs(argsComm, 1, 2)) {
-            if (argsComm[1] == NULL) {
+    else if (strcmp(command -> argsComm[0], "exit") == 0) {
+        if (correct_nbArgs(command -> argsComm, 1, 2)) {
+            if (command -> argsComm[1] == NULL) {
                 exit_jsh(lastReturn);
             }
             else {
-                int int_args = convert_str_to_int(argsComm[1]);
+                int int_args = convert_str_to_int(command -> argsComm[1]);
                 if (int_args == INT_MIN) {//we check the second argument doesn't contain some chars
                     fprintf(stderr,"Exit takes a normal integer as argument\n");
                 }
@@ -143,127 +253,7 @@ void callRightCommand(char** argsComm, unsigned nbArgs, char* strComm) {
             }
         }
     }
-    // Commandes externes
-    else {
-        if (strcmp(argsComm[nbArgs-1],"&") == 0 && nbArgs-1 == 0) {
-            fprintf(stderr,"Wrong command name\n");
-        }
-        else if (strcmp(argsComm[nbArgs-1],"&") == 0) {
-            argsComm[nbArgs-1] = NULL;
-            lastReturn = external_command(argsComm,true,strComm);
-        }
-        else {
-            lastReturn = external_command(argsComm,false,strComm);
-        }
-    }
 }
-
-void entry_redirection(char** argsComm, unsigned nbArgs, char* buffer, char * pathname ){
-    int cpy_stin = dup(STDIN_FILENO);
-    int fd = open(pathname,O_WRONLY|O_APPEND);
-        dup2(fd,STDIN_FILENO);
-        callRightCommand(argsComm,nbArgs,buffer);
-        dup2(cpy_stin,0);
-}
-
-void simple_redirection(char** argsComm, unsigned nbArgs, char* buffer,bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_flow = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_CREAT|O_EXCL);
-    if (fd == -1){
-        fprintf(stderr,"bash : %s: file does not exist\n", argsComm[0]);
-        lastReturn = 1;
-    }
-    else{
-        dup2(fd,flow);
-        callRightCommand(argsComm,nbArgs,buffer);
-        dup2(cpy_flow,second_flow);
-    }
-}
-
-
-void overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int cpy_flow = dup(STDOUT_FILENO);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
-    dup2(fd,STDOUT_FILENO);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_flow,1);
-}
-
-
-void error_overwritte_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_flow = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_TRUNC);
-    dup2(fd,flow);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_flow,second_flow);
-}
-
-
-
-void concat_redirection(char** argsComm, unsigned nbArgs, char* buffer, bool error, char * pathname ){
-    int flow;
-    int second_flow;
-    if (error) {
-        flow = STDERR_FILENO;
-        second_flow = 2;
-    }
-    else {
-        flow = STDOUT_FILENO;
-        second_flow = 1;
-    }
-    int cpy_stdout = dup(flow);
-    int fd = open(pathname,O_WRONLY|O_APPEND|O_APPEND);
-    dup2(fd,flow);
-    callRightCommand(argsComm,nbArgs,buffer);
-    dup2(cpy_stdout,second_flow);
-}
-
-
-
-void cmd_redirection (char** argsComm_1, unsigned nbArgs_1, char* buffer_1,char** argsComm_2, unsigned nbArgs_2, char* buffer_2){
-    int t[2];
-    pipe(t);
-    int cpy_1 = dup(1);
-    int cpy_2 = dup(0);
-    dup2(t[1],STDOUT_FILENO);
-    dup2(t[0],STDIN_FILENO);
-    callRightCommand(argsComm_1,nbArgs_1,buffer_1);
-    int n = read(t[0],argsComm_2[0],100);
-    if (n<0) {
-        dup2(cpy_1,1);
-        dup2(cpy_2,0);
-        perror("argument invalids, no OUT value of cm1"); 
-        lastReturn = 1;
-    }
-    else{
-        callRightCommand(argsComm_2,nbArgs_1,buffer_1);
-    }
-    dup2(cpy_1,1);
-    dup2(cpy_2,0);
-}
-
-
-
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 affiche un message d'erreur et retoure false sinon. */
@@ -278,6 +268,69 @@ bool correct_nbArgs(char** argsComm, unsigned min_nbArgs, unsigned max_nbArgs) {
     }
     if (!(correct_nb)) lastReturn = -1;
     return correct_nb;
+}
+
+/*
+This function returns the error of execvp and is exuting the command "command_name" with the arguments "arguments".
+*/
+int external_command(Command* command, char* fifo_out_name) {
+    pid_t pid = fork();
+
+    if (pid == 0) { // processus enfant
+        int tmp = 0;
+        if (nbJobs < 40) {
+            if (fifo_out_name != NULL) {
+                int fd_out = open(fifo_out_name, O_WRONLY);
+                dup2(fd_out, 1);
+                close(fd_out);
+            }
+            tmp = execvp(command -> argsComm[0], command -> argsComm);
+            fprintf(stderr,"Wrong command name\n");
+        }
+        exit(tmp);
+    }
+    else { // processus parent
+        int status;
+        if (!command -> background) {
+            waitpid(pid,&status,0);
+        }
+        else {
+            sleep(1);
+            int status;
+            pid_t state = waitpid(pid,&status,WNOHANG);
+            if (nbJobs == 40) {
+                fprintf(stderr,"Too much jobs running simultaneously\n");
+                return -1;
+            }
+            else if (state != 0) {
+                if (WIFEXITED(status)) {//si le fils s'est terminé normalement c'est qu'en parametre il y avait une fonction instantané
+                    fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+                }
+                return -1;
+            }
+            else {
+                nbJobs++;
+                char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
+                strcpy(command_name,command -> strComm);
+                int i = strlen(command_name)-1;
+                while (true) {//supprimer le & a la fin de la commande
+                    if (*(command_name+i) == '&') {
+                        *(command_name+i) = ' ';
+                        break;
+                    }
+                    *(command_name+i) = ' ';
+                    i--;
+                }
+                char* state = malloc(sizeof(char)*8);
+                strcpy(state,"Running");
+                Job tmp = {nbJobs, pid, state, command_name};
+                l_jobs[nbJobs-1] = tmp;
+                fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+                return 0;
+            }
+        }
+        return WEXITSTATUS(status);//return the exit value of the son
+    }
 }
 
 char* pwd() {
@@ -300,64 +353,6 @@ char* pwd() {
     }
     lastReturn = 0;
     return buf;
-}
-
-/*
-This function returns the error of execvp and is exuting the command "command_name" with the arguments "arguments".
-*/
-int external_command(char** command, bool create_new_job, char* buffer) {
-    pid_t pid = fork();
-
-    if (pid == 0) {
-        int tmp = 0;
-        if (nbJobs < 40) {
-            tmp = execvp(command[0],command);
-            fprintf(stderr,"Wrong command name\n");
-        }
-        exit(tmp);
-    }
-    else {
-        int status;
-        if (!create_new_job) {
-            waitpid(pid,&status,0);
-        }
-        else {
-            sleep(1);
-            int status;
-            pid_t state = waitpid(pid,&status,WNOHANG);
-            if (nbJobs == 40) {
-                fprintf(stderr,"Too much jobs running simultaneously\n");
-                return -1;
-            }
-            else if (state != 0) {
-                if (WIFEXITED(status)) {//si le fils s'est terminé normalement c'est qu'en parametre il y avait une fonction instantané
-                    fprintf(stderr,"[%d] %d\n",nbJobs,pid);
-                }
-                return -1;
-            }
-            else {
-                nbJobs++;
-                char* command_name = malloc(sizeof(char)*strlen(buffer));
-                strcpy(command_name,buffer);
-                int i = strlen(command_name)-1;
-                while (true) {//supprimer le & a la fin de la commande
-                    if (*(command_name+i) == '&') {
-                        *(command_name+i) = ' ';
-                        break;
-                    }
-                    *(command_name+i) = ' ';
-                    i--;
-                }
-                char* state = malloc(sizeof(char)*8);
-                strcpy(state,"Running");
-                Job tmp = {nbJobs, pid, state, command_name};
-                l_jobs[nbJobs-1] = tmp;
-                fprintf(stderr,"[%d] %d\n",nbJobs,pid);
-                return 0;
-            }
-        }
-        return WEXITSTATUS(status);//return the exit value of the son
-    }
 }
 
 void cd (char* pathname) {
