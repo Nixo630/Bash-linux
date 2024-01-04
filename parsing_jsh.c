@@ -143,7 +143,7 @@ int parse_redirections(Command* command) {
     for (unsigned i = 0; i < command -> nbArgs; ++i) {
         if (command -> argsComm[i] == NULL) break;
         if (!strcmp(command -> argsComm[i], "&")) {
-            if (i != command -> nbArgs-1) { // Si '&' n'est pas le dernier mot de la commande.
+            if (i != command -> nbArgs - args_removed - 1) { // Si '&' n'est pas le dernier mot de la commande.
                 fprintf(stderr,"Commande %s: Symbole '&' mal placé.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
@@ -152,6 +152,7 @@ int parse_redirections(Command* command) {
                 command -> argsComm[i] = NULL;
                 free(command -> argsComm[i]);
                 args_removed++;
+                break;
             }
         }
         int redirection_value = is_redirection_symbol(command -> argsComm[i]);
@@ -237,6 +238,8 @@ void print_command(Command* command) {
         printf("%s,", command -> argsComm[i]);
     }
     printf("%s\n",command -> argsComm[command -> nbArgs-1]);
+    // Affichage du fait que la commande doit être exécutée en arrière-plan ou non.
+    printf("Background:%s\n", command -> background ? "yes" : "no");
     // Affichage entrée, sortie et sortie erreur standard de la commande.
     if (command -> in_redir != NULL) printf("Entrée: %s %s\n", command -> in_redir[0], command -> in_redir[1]);
     if (command -> out_redir != NULL) printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);

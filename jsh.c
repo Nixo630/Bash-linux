@@ -77,7 +77,7 @@ void main_loop() {
     free(strInput);
 }
 
-void executeCommand() {
+void executeCommand(Command* command) {
     // exécute les événtuelles input et substitutions et fait les fifo;
 }
 
