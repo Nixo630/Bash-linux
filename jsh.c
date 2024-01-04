@@ -70,7 +70,7 @@ void main_loop() {
         else {
             add_history(strInput); // Ajoute la ligne de commande entrée à l'historique.
             Command* command = getCommand(strInput);
-            print_command(command);
+            if (command != NULL) print_command(command);
         }
     }
     // Libération de la mémoire allouée par readline.
