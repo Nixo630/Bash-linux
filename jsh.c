@@ -185,7 +185,7 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
     if (is_internal(command -> argsComm[0])) {
         callRightCommand(command);
     }
-    else external_command(command, fifo_out_name);
+    else lastReturn = external_command(command, fifo_out_name);
 
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
@@ -321,16 +321,15 @@ int external_command(Command* command, char* fifo_out_name) {
                 nbJobs++;
                 char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
                 strcpy(command_name,command -> strComm);
-                // '&' déjà supprimé dans le parsing.
-                // int i = strlen(command_name)-1;
-                // while (true) {//supprimer le & a la fin de la commande
-                //     if (*(command_name+i) == '&') {
-                //         *(command_name+i) = ' ';
-                //         break;
-                //     }
-                //     *(command_name+i) = ' ';
-                //     i--;
-                // }
+                int i = strlen(command_name)-1;
+                while (true) {//supprimer le & a la fin de la commande
+                    if (*(command_name+i) == '&') {
+                        *(command_name+i) = ' ';
+                        break;
+                    }
+                    *(command_name+i) = ' ';
+                    i--;
+                }
                 char* state = malloc(sizeof(char)*8);
                 strcpy(state,"Running");
                 Job tmp = {nbJobs, pid, state, command_name};
