@@ -89,7 +89,7 @@ int parse_command(Command* command) {
     char* cpy = malloc(MAX_NB_ARGS * 10); /* On opère le parsing sur une copie de la string
     de commande originelle */
     strcpy(cpy, command -> strComm);
-    char* tmp = malloc(50 * sizeof(char)); // Stocke temporairement les tokens.
+    // char* tmp = malloc(50 * sizeof(char)); // Stocke temporairement les tokens.
     char* inside_parentheses = malloc(MAX_NB_ARGS * 10); // Stocke la commande qui constitue une substitution.
     // Initialisation tableau argsComm.
     command -> argsComm = malloc(MAX_NB_ARGS * sizeof(char*));
@@ -98,7 +98,8 @@ int parse_command(Command* command) {
     }
     unsigned index = 0; // Nombre de tokens.
     command -> argsComm[index] = malloc(MAX_SIZE_ARG);
-    strcpy(command -> argsComm[0], strtok(cpy, " "));
+    char* tmp = strtok(cpy, " ");
+    strcpy(command -> argsComm[0], tmp);
     index++;
     while (1) { // Boucle sur les mots de la commande.
         if (index == (MAX_NB_ARGS)-1) { // Erreur si la commande contient trop de mots.
@@ -137,7 +138,8 @@ int parse_command(Command* command) {
     }
     command -> nbArgs = index;
     if (returnValue == -1) tmp = NULL;
-    free(tmp);
+    // Libération buffers.
+    //free(tmp);
     free(cpy);
     free(inside_parentheses);
     // On crée des commandes à partir des substitutions récupérées. On le fait maintenant, à la fin de la
