@@ -14,11 +14,7 @@
 #include <sys/stat.h>
 #include "toolbox_jsh.h"
 #include "parsing_jsh.h"
-#include "jobs_jsh.h"
 #include "jsh.h"
-
-extern int nbJobs;
-extern Job* l_jobs;
 
 #define NORMAL "\033[00m"
 #define BLEU "\033[01;34m"
@@ -37,10 +33,14 @@ int main(int argc, char** argv) {
     // Libération des buffers
     free(previous_folder);
     free(current_folder);
-    free(l_jobs);
+    for (int i = 0; i < nbJobs; i++){
+        free(l_jobs[i].command_name);
+        free(l_jobs[i].state);
+    }
     for (int i = 0; i < nbJobs; i++) {
         kill(l_jobs[i].pid,SIGKILL);
     }
+    free(l_jobs);
     return lastReturn;
 }
 
@@ -304,7 +304,7 @@ int external_command(Command* command, char* fifo_out_name) {
             waitpid(pid,&status,0);
         }
         else {
-            sleep(1);
+            //sleep(1);
             int status;
             pid_t state = waitpid(pid,&status,WNOHANG);
             if (nbJobs == 40) {
@@ -424,6 +424,55 @@ void exit_jsh(int val) {
     else {
         lastReturn = val;
         running = 0;
+    }
+}
+
+int killJob (char* sig, char* pid) {
+    int sig2 = convert_str_to_int(sig);
+    if (sig2 == INT_MIN) {
+        fprintf(stderr,"wrong command");
+        return -2;
+    }
+    int pid2 = convert_str_to_int(pid);
+    if (pid2 == INT_MIN) {
+        fprintf(stderr,"wrong command");
+        return -2;
+    }
+    int returnValue = kill(pid2,sig2);
+    if (returnValue == 0 && sig2 == 9) {
+        int i = 0;
+        while (l_jobs[i].pid != pid2) {
+            i++;
+        }
+        free(l_jobs[i].state);
+        char* state = malloc(sizeof(char)*11);
+        strcpy(state,"Terminated");
+        l_jobs[i].state = state;
+        print_job(l_jobs[i]);
+        removeJob(i);
+        nbJobs--;
+    }
+    return returnValue;
+}
+
+void print_job(Job job) {
+    fprintf(stderr,"[%d] %d %s %s\n",job.nJob,job.pid,job.state,job.command_name);
+}
+
+void print_jobs() {
+    for (int i = 0; i < nbJobs; i++) {
+        if (l_jobs[i].pid != 0) {
+            print_job(l_jobs[i]);
+        }
+    }
+}
+
+void removeJob (int n) {
+    l_jobs[n].nJob = 0;
+    l_jobs[n].pid = 0;
+    free(l_jobs[n].state); 
+    for (int i = n; i < nbJobs; i++) {
+        l_jobs[i] = l_jobs[i+1];
     }
 }
 
