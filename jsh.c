@@ -116,7 +116,7 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
             fprintf(stderr, "command %s: redirection entrée impossible", command -> argsComm[0]);
         } else {
             cpy_stdin = dup(0);
-            fd_in = open(fifo_in_name, O_RDONLY | O_NONBLOCK);
+            fd_in = open(fifo_in_name, O_RDONLY | O_NONBLOCK, 0777);
             dup2(fd_in, 0);
             close(fd_in);
         }
@@ -136,7 +136,7 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
         } else {
             if (is_internal(command -> argsComm[0])) {
                 cpy_stdout = dup(1);
-                fd_out = open(fifo_out_name, O_WRONLY | O_NONBLOCK);
+                fd_out = open(fifo_out_name, O_WRONLY | O_NONBLOCK, 0777);
                 dup2(fd_out, 1);
                 close(fd_out);
             } else { // Cas où la commande est externe.
@@ -148,9 +148,14 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
         cpy_stdout = dup(1);
         if (!strcmp(command -> out_redir[0], ">")) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0777);
+            if (fd_out == -1) {
+                fprintf(stderr,"bash : %s: file already exist.\n", command -> argsComm[0]);
+                lastReturn =  1;
+                return;
+            }
         } else if (!strcmp(command -> out_redir[0], ">|")) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0777);
-        } else if (!strcmp(command -> out_redir[0], ">|")) {
+        } else if (!strcmp(command -> out_redir[0], ">>")) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_APPEND|O_CREAT, 0777);
         }
         dup2(fd_out, 1);
@@ -162,9 +167,14 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
         cpy_stderr = dup(2);
         if (!strcmp(command -> err_redir[0], "2>")) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0777);
+            if (fd_err == -1) {
+                fprintf(stderr,"bash : %s: file already exists.\n", command -> argsComm[0]);
+                lastReturn =  1;
+                return;
+            }
         } else if (!strcmp(command -> err_redir[0], "2>|")) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0777);
-        } else if (!strcmp(command -> err_redir[0], "2>|")) {
+        } else if (!strcmp(command -> err_redir[0], "2>>")) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT, 0777);
         }
         dup2(cpy_stderr, 2);
@@ -179,8 +189,7 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
 
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
-    // if (fd_out != -1) dup2(cpy_stdout, 1);
-    if (fd_out != -1) {dup2(cpy_stdout, 1);printf("here\n");}
+    if (fd_out != -1) dup2(cpy_stdout, 1);
     if (fd_err != -1) dup2(cpy_stderr, 2);
 }
 
@@ -285,7 +294,7 @@ int external_command(Command* command, char* fifo_out_name) {
                 close(fd_out);
             }
             tmp = execvp(command -> argsComm[0], command -> argsComm);
-            fprintf(stderr,"Wrong command name\n");
+            fprintf(stderr,"%s\n", strerror(errno)); // Ne s'exécute qu'en cas d'erreur dans l'exécution de execvp.
         }
         exit(tmp);
     }

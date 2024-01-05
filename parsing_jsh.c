@@ -78,7 +78,7 @@ int parse_command(Command* command) {
     strcpy(cpy, command -> strComm);
     char* tmp = malloc(50 * sizeof(char)); // Stocke temporairement les tokens.
     char* inside_parentheses = malloc(MAX_NB_ARGS * 10); // Stocke la commande qui constitue une substitution.
-    command -> argsComm = malloc(MAX_NB_ARGS);
+    command -> argsComm = malloc(MAX_NB_ARGS * sizeof(char*));
     unsigned index = 0; // Nombre de tokens.
     command -> argsComm[index] = malloc(50);
     strcpy(command -> argsComm[0], strtok(cpy, " "));
@@ -92,7 +92,7 @@ int parse_command(Command* command) {
         tmp = strtok(NULL, " ");
         if (tmp == NULL) break;
         command -> argsComm[index] = malloc(50);
-        if (strcmp(tmp, "<(") == 0) {
+        if (strcmp(tmp, "<(") == 0) { // Si on est au début d'une substitution.
             unsigned nb_parentheses_ouvrantes = 1;
             unsigned nb_parentheses_fermantes = 0;
             while(1) {
@@ -201,15 +201,15 @@ int parse_redirections(Command* command) {
                     break;
             }
             // Décalage du reste des arguments de deux cases vers la gauche.
-            for (int j = i+2; j < command -> nbArgs - args_removed; ++j) {
+            for (unsigned j = i+2; j < command -> nbArgs - args_removed; ++j) {
                 strcpy(command -> argsComm[j-2], command -> argsComm[j]);
             }
             // Mise à NULL et libération des deux dernières cases d'arguments non-nulles.
-            command -> argsComm[command -> nbArgs - args_removed-1] = NULL;
-            free(command -> argsComm[command -> nbArgs - args_removed-1]);
-            command -> argsComm[command -> nbArgs - args_removed-2] = NULL;
-            free(command -> argsComm[command -> nbArgs - args_removed-1]);
-            args_removed += 2;
+            for (unsigned j = 0; j < 2; ++j) {
+                command -> argsComm[command -> nbArgs - args_removed-1] = NULL;
+                free(command -> argsComm[command -> nbArgs - args_removed-1]);
+                args_removed++;
+            }
             i--;
         }
     }
