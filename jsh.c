@@ -177,7 +177,7 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
         } else if (!strcmp(command -> err_redir[0], "2>>")) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT, 0777);
         }
-        dup2(cpy_stderr, 2);
+        dup2(fd_err, 2);
         close(fd_err);
     }
 
