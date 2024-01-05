@@ -297,7 +297,7 @@ void free_command(Command* command) {
     }
     // Libération éventuelle input.
     if (command -> input != NULL) {
-        free_command(input);
+        free_command(command -> input);
     }
     // Libération éventuelles substitutions.
     if (command -> substitutions != NULL) {
