@@ -270,25 +270,41 @@ void print_command(Command* command) {
 
 // Libère toute la mémoire allouée pour une structure Command.
 void free_command(Command* command) {
+    // Libération string de commande.
     free(command -> strComm);
+    // Libération arguments de la commande.
     for (int i = 0; i < command -> nbArgs; ++i) {
         free(command -> argsComm[i]);
     }
     free(command -> argsComm);
+    // Libération redirection entrée de la commande.
     if (command -> in_redir != NULL) {
         if (command -> in_redir[0] != NULL) free(command -> in_redir[0]);
         if (command -> in_redir[1] != NULL) free(command -> in_redir[1]);
         free(command -> in_redir);
     }
+    // Libération redirection sortie de la commande.
     if (command -> out_redir != NULL) {
         if (command -> out_redir[0] != NULL) free(command -> out_redir[0]);
         if (command -> out_redir[1] != NULL) free(command -> out_redir[1]);
         free(command -> out_redir);
     }
+    // Libération redirection sortie erreur de la commande.
     if (command -> err_redir != NULL) {
         if (command -> err_redir[0] != NULL) free(command -> err_redir[0]);
         if (command -> err_redir[1] != NULL) free(command -> err_redir[1]);
         free(command -> err_redir);
+    }
+    // Libération éventuelle input.
+    if (command -> input != NULL) {
+        free_command(input);
+    }
+    // Libération éventuelles substitutions.
+    if (command -> substitutions != NULL) {
+        for (unsigned i = 0; i < command -> nbSubstitutions; ++i) {
+            free_command(command -> substitutions[i]);
+        }
+        free(command -> substitutions);
     }
     free(command);
 }
