@@ -226,10 +226,10 @@ int parse_redirections(Command* command) {
             for (unsigned j = i+2; j < command -> nbArgs - args_removed; ++j) {
                 strcpy(command -> argsComm[j-2], command -> argsComm[j]);
             }
-            // Mise à NULL et libération des deux dernières cases d'arguments non-nulles.
+            // Libération et mise à NULL des deux dernières cases d'arguments non-nulles.
             for (unsigned j = 0; j < 2; ++j) {
-                command -> argsComm[command -> nbArgs - args_removed-1] = NULL;
-                free(command -> argsComm[command -> nbArgs - args_removed-1]);
+                free(command -> argsComm[command -> nbArgs - args_removed - 1]);
+                command -> argsComm[command -> nbArgs - args_removed - 1] = NULL;
                 args_removed++;
             }
             i--;
