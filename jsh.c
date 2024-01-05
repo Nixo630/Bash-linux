@@ -288,11 +288,11 @@ int external_command(Command* command, char* fifo_out_name) {
     if (pid == 0) { // processus enfant
         int tmp = 0;
         if (nbJobs < 40) {
-            if (fifo_out_name != NULL) {
-                int fd_out = open(fifo_out_name, O_WRONLY);
-                dup2(fd_out, 1);
-                close(fd_out);
-            }
+            // if (fifo_out_name != NULL) {
+            //     int fd_out = open(fifo_out_name, O_WRONLY);
+            //     dup2(fd_out, 1);
+            //     close(fd_out);
+            // }
             tmp = execvp(command -> argsComm[0], command -> argsComm);
             fprintf(stderr,"%s\n", strerror(errno)); // Ne s'exécute qu'en cas d'erreur dans l'exécution de execvp.
         }
@@ -321,15 +321,16 @@ int external_command(Command* command, char* fifo_out_name) {
                 nbJobs++;
                 char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
                 strcpy(command_name,command -> strComm);
-                int i = strlen(command_name)-1;
-                while (true) {//supprimer le & a la fin de la commande
-                    if (*(command_name+i) == '&') {
-                        *(command_name+i) = ' ';
-                        break;
-                    }
-                    *(command_name+i) = ' ';
-                    i--;
-                }
+                // '&' déjà supprimé dans le parsing.
+                // int i = strlen(command_name)-1;
+                // while (true) {//supprimer le & a la fin de la commande
+                //     if (*(command_name+i) == '&') {
+                //         *(command_name+i) = ' ';
+                //         break;
+                //     }
+                //     *(command_name+i) = ' ';
+                //     i--;
+                // }
                 char* state = malloc(sizeof(char)*8);
                 strcpy(state,"Running");
                 Job tmp = {nbJobs, pid, state, command_name};

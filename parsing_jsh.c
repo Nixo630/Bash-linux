@@ -14,8 +14,9 @@ Command* getCommand(char* input) {
     char* firstCommand = first_command(input);
     bool error = false;
     do { // Pour chaque commande de la pipeline.
+        // Initialisation membres de la structure command.
         pipeline[index] = malloc(sizeof(Command));
-        pipeline[index] -> strComm = malloc(MAX_NB_ARGS * 10);
+        pipeline[index] -> strComm = NULL;
         pipeline[index] -> argsComm = NULL;
         pipeline[index] -> nbArgs = 0;
         pipeline[index] -> in_redir = NULL;
@@ -25,8 +26,11 @@ Command* getCommand(char* input) {
         pipeline[index] -> nbSubstitutions = 0;
         pipeline[index] -> input = NULL;
         pipeline[index] -> background = false;
+        // Remplissage du champ strComm de la structure commande.
+        pipeline[index] -> strComm = malloc(MAX_NB_ARGS * 10);
         strcpy(pipeline[index] -> strComm, firstCommand);
         free(firstCommand);
+        // Découpage des arguments et des redirections de la commande.
         if (parse_command(pipeline[index]) == -1 || parse_redirections(pipeline[index]) == -1) {
             error = true;
             break;
@@ -87,7 +91,11 @@ int parse_command(Command* command) {
     strcpy(cpy, command -> strComm);
     char* tmp = malloc(50 * sizeof(char)); // Stocke temporairement les tokens.
     char* inside_parentheses = malloc(MAX_NB_ARGS * 10); // Stocke la commande qui constitue une substitution.
+    // Initialisation tableau argsComm.
     command -> argsComm = malloc(MAX_NB_ARGS * sizeof(char*));
+    for (int i = 0; i < MAX_NB_ARGS; ++i) {
+        command -> argsComm[i] = NULL;
+    }
     unsigned index = 0; // Nombre de tokens.
     command -> argsComm[index] = malloc(50);
     strcpy(command -> argsComm[0], strtok(cpy, " "));
