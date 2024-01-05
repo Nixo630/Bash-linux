@@ -56,11 +56,13 @@ char* first_command(char* input) {
     unsigned len_command = len_input; // Par défaut, on considère que l'input est constituée d'une seule commande.
     char* strComm = malloc(MAX_NB_ARGS * 10);
     char* first_bar_adress = (char*) NULL;
-    // Recherche de la première occurence du caractère | qui ne soit pas à l'intérieur d'une substitution.
+    /* Recherche de la première occurence du caractère | qui ne soit pas dans un symbole de redirection ou
+    à l'intérieur d'une substitution. */
     unsigned nb_parentheses_ouvrantes = 0;
     unsigned nb_parentheses_fermantes = 0;
     for (unsigned i = 0; i < len_command; ++i) {
-        if ((input[i] == '|') && (nb_parentheses_fermantes == nb_parentheses_ouvrantes)) {
+        if ((input[i] == '|') && (nb_parentheses_fermantes == nb_parentheses_ouvrantes)
+            && (i != 0) && (input[i-1] == ' ')) {
             first_bar_adress = input+i;
             break;
         }
@@ -137,9 +139,7 @@ int parse_command(Command* command) {
         ++index;
     }
     command -> nbArgs = index;
-    if (returnValue == -1) tmp = NULL;
     // Libération buffers.
-    //free(tmp);
     free(cpy);
     free(inside_parentheses);
     // On crée des commandes à partir des substitutions récupérées. On le fait maintenant, à la fin de la
@@ -267,7 +267,7 @@ void print_command(Command* command) {
     if (command -> out_redir != NULL) printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
     if (command -> err_redir != NULL) printf("Sortie erreur: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
     // Affichage input de la commande.
-    printf("Input: %s\n", command -> input == NULL ? "aucune" : command -> argsComm[0]);
+    printf("Input: %s\n", command -> input == NULL ? "aucune" : command -> input -> argsComm[0]);
      // Affichage substitutions qu'utilise la commande.
     if (command -> nbSubstitutions > 0) {
         printf("nbSubstitutions: %i\n", command -> nbSubstitutions);
