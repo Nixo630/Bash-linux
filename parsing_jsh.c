@@ -16,6 +16,15 @@ Command* getCommand(char* input) {
     do { // Pour chaque commande de la pipeline.
         pipeline[index] = malloc(sizeof(Command));
         pipeline[index] -> strComm = malloc(MAX_NB_ARGS * 10);
+        pipeline[index] -> argsComm = NULL;
+        pipeline[index] -> nbArgs = 0;
+        pipeline[index] -> in_redir = NULL;
+        pipeline[index] -> out_redir = NULL;
+        pipeline[index] -> err_redir = NULL;
+        pipeline[index] -> substitutions = NULL;
+        pipeline[index] -> nbSubstitutions = 0;
+        pipeline[index] -> input = NULL;
+        pipeline[index] -> background = false;
         strcpy(pipeline[index] -> strComm, firstCommand);
         free(firstCommand);
         if (parse_command(pipeline[index]) == -1 || parse_redirections(pipeline[index]) == -1) {
@@ -125,10 +134,13 @@ int parse_command(Command* command) {
     free(inside_parentheses);
     // On crée des commandes à partir des substitutions récupérées. On le fait maintenant, à la fin de la
     // fonction, et pas lorsque la string de commande est découpée, pour ne pas interrompre strtok.
-    for (int i = 0; i < command -> nbSubstitutions; ++i) {
-        command -> substitutions[i] = getCommand(substitutions_tmp[i]);
-        free(substitutions_tmp[i]);
-        if (command -> substitutions[i] == NULL) {returnValue = -1;break;}
+    if (command -> nbSubstitutions > 0) {
+        command -> substitutions = malloc(MAX_NB_SUBSTITUTIONS * sizeof(Command));
+        for (int i = 0; i < command -> nbSubstitutions; ++i) {
+            command -> substitutions[i] = getCommand(substitutions_tmp[i]);
+            free(substitutions_tmp[i]);
+            if (command -> substitutions[i] == NULL) {returnValue = -1;break;}
+        }
     }
     return returnValue;
 }
