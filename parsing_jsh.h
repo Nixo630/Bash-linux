@@ -1,5 +1,6 @@
 #include <stddef.h>
 #define MAX_NB_ARGS 32 // Nombre d'arguments max d'une commande (une substitution compte pour 1).
+#define MAX_SIZE_ARG 128 // Taille maximum pour un argument (token) d'une commande.
 #define MAX_NB_SUBSTITUTIONS 32 // Nombre de substitutions max pour une commande.
 #define MAX_LENGTH_PIPELINE 32 // Nombre de commandes max dans une pipeline.
 

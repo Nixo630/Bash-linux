@@ -97,7 +97,7 @@ int parse_command(Command* command) {
         command -> argsComm[i] = NULL;
     }
     unsigned index = 0; // Nombre de tokens.
-    command -> argsComm[index] = malloc(50);
+    command -> argsComm[index] = malloc(MAX_SIZE_ARG);
     strcpy(command -> argsComm[0], strtok(cpy, " "));
     index++;
     while (1) { // Boucle sur les mots de la commande.
@@ -108,7 +108,7 @@ int parse_command(Command* command) {
         }
         tmp = strtok(NULL, " ");
         if (tmp == NULL) break;
-        command -> argsComm[index] = malloc(50);
+        command -> argsComm[index] = malloc(MAX_SIZE_ARG);
         if (strcmp(tmp, "<(") == 0) { // Si on est au début d'une substitution.
             unsigned nb_parentheses_ouvrantes = 1;
             unsigned nb_parentheses_fermantes = 0;
@@ -190,9 +190,9 @@ int parse_redirections(Command* command) {
                         return -1;
                     }
                     command -> in_redir = malloc(2 * sizeof(char*));
-                    command -> in_redir[0] = malloc(10);
+                    command -> in_redir[0] = malloc(5);
                     strcpy(command -> in_redir[0], command -> argsComm[i]);
-                    command -> in_redir[1] = malloc(50);
+                    command -> in_redir[1] = malloc(MAX_SIZE_ARG);
                     strcpy(command -> in_redir[1], command -> argsComm[i+1]);
                     break;
                 case 1: // Cas d'un symbole de redirection de sortie.
@@ -202,9 +202,9 @@ int parse_redirections(Command* command) {
                         break;
                     }
                     command -> out_redir = malloc(2 * sizeof(char*));
-                    command -> out_redir[0] = malloc(10);
+                    command -> out_redir[0] = malloc(5);
                     strcpy(command -> out_redir[0], command -> argsComm[i]);
-                    command -> out_redir[1] = malloc(50);
+                    command -> out_redir[1] = malloc(MAX_SIZE_ARG);
                     strcpy(command -> out_redir[1], command -> argsComm[i+1]);
                     break;
                 case 2: // Cas d'un symbole de redirection de sortie erreur.
@@ -214,9 +214,9 @@ int parse_redirections(Command* command) {
                         break;
                     }
                     command -> err_redir = malloc(2 * sizeof(char*));
-                    command -> err_redir[0] = malloc(10);
+                    command -> err_redir[0] = malloc(5);
                     strcpy(command -> err_redir[0], command -> argsComm[i]);
-                    command -> err_redir[1] = malloc(50);
+                    command -> err_redir[1] = malloc(MAX_SIZE_ARG);
                     strcpy(command -> err_redir[1], command -> argsComm[i+1]);
                     break;
             }
