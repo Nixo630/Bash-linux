@@ -16,24 +16,21 @@ void checkAlloc(void* ptr) {
 }
 
 int convert_str_to_int (char* string) {
-    char* string2 = malloc(sizeof(char)*strlen(string)-1);
+    char* string2 = malloc(sizeof(char)*strlen(string)+1);
+    // Enlever l'éventuel '-' ou '%' devant le nombre.
     if (string[0] == '-' || string[0] == '%') {
         for (int i = 0; i < strlen(string)-1; i++) {
             *(string2+i) = *(string+i+1);
         }
         string2[strlen(string)-1] = '\0';
-    }
-    else {
-        string2 = realloc(string2,sizeof(char)*strlen(string));
-        strcpy(string2,string);
-    }
-    char** tmp = malloc(sizeof(char)*50);
+    } else strcpy(string2,string);
+    char** tmp = malloc(sizeof(char*));
     int int_args = strtol(string2,tmp,10);//base 10 and we store invalids arguments in tmp
-    if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
-        free(string2);
-        free(tmp);
-        return INT_MIN;
-    }
+    // if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
+    //     free(string2);
+    //     free(tmp);
+    //     return INT_MIN;
+    // }
     free(tmp);
     free(string2);
     if (string[0] == '%') {
@@ -42,6 +39,7 @@ int convert_str_to_int (char* string) {
     return int_args;
 }
 
+// Retourne le nombre de chiffres utilisés dans l'écriture d'un entier en base 10.
 int length_base10(int n) {
     int i = 1;
     int x = n;
