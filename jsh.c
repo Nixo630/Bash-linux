@@ -70,20 +70,22 @@ void main_loop() {
         else {
             add_history(strInput); // Ajoute la ligne de commande entrée à l'historique.
             Command* command = getCommand(strInput);
-            if (command != NULL) executeCommand(command, NULL);
+            if (command != NULL) execute_command(command, NULL);
         }
     }
     // Libération de la mémoire allouée par readline.
     free(strInput);
 }
 
-void executeCommand(Command* command, char* fifo_out_name) {
+/* Lance l'exécution de toutes les commandes situées à l'intérieur de la structure Command passée en
+argument, gère le stockage de leur sortie, puis lance l'exécution de l'agument command. */
+void execute_command(Command* command, char* fifo_out_name) {
     char* fifo_in_name = (char*) NULL;
     if (command -> input != NULL) { // Si la commande a une input (dans le contexte d'une pipeline).
         fifo_in_name = malloc(20);
         strcpy(fifo_in_name, "fifo_in");
         mkfifo(fifo_in_name, 0666);
-        executeCommand(command -> input, fifo_in_name);
+        execute_command(command -> input, fifo_in_name);
     }
     unsigned cpt = 0;
     for (int i = 0; i < command -> nbArgs; ++i) { // Pour toutes les éventuelles substitutions que la commande utilise.
@@ -92,7 +94,7 @@ void executeCommand(Command* command, char* fifo_out_name) {
             sprintf(fifo_name, "fifo%i", cpt);
             mkfifo(fifo_name, 0666);
             strcpy(command -> argsComm[i], fifo_name);
-            executeCommand(command -> substitutions[i], fifo_name);
+            execute_command(command -> substitutions[i], fifo_name);
             free(fifo_name);
         }
         cpt++;
