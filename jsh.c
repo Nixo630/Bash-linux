@@ -82,11 +82,10 @@ argument, gère le stockage de leur sortie, puis lance l'exécution de l'agument
 void execute_command(Command* command, int pipe_out[2]) {
     int* pipe_in = NULL;
     if (command -> input != NULL) { // Si la commande a une input (dans le contexte d'une pipeline).
-        pipe_in = malloc(2);
+        pipe_in = malloc(8); // 8 octets nécessaires pour stocker 2 int.
         pipe(pipe_in);
         // Stockage de l'input sur un tube.
         execute_command(command -> input, pipe_in);
-        printf("Stockage input bien passé\n");
     }
     // unsigned cpt = 0;
     // for (int i = 0; i < command -> nbArgs; ++i) { // Pour toutes les éventuelles substitutions que la commande utilise.
@@ -101,7 +100,6 @@ void execute_command(Command* command, int pipe_out[2]) {
     //     cpt++;
     // }
     apply_redirections(command, pipe_in, pipe_out);
-    printf("Exécution deuxième commande bien passé\n");
     if (pipe_in != NULL) free(pipe_in);
     // Libération de la mémoire allouée pour la commande.
     free_command(command);
@@ -132,15 +130,16 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     }
 
     // Redirection sortie.
-    if (pipe_out != NULL) { // Si la sortie est un tube nommé.
+    if (pipe_out != NULL) { // Si la sortie est un tube.
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
         } else {
             if (is_internal(command -> argsComm[0])) {
+                /* Les fermetures des descripteurs du tube se font lors de l'utilisation de ce tube
+                en tant qu'entrée d'une commande. */
                 cpy_stdout = dup(1);
                 fd_out = pipe_out[1];
                 dup2(fd_out, 1);
-                close(fd_out);
             } else { // Cas où la commande est externe.
                 cpy_stdout = dup(1);
                 // Le reste de la redirection est faite dans external_command().

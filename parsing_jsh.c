@@ -317,16 +317,9 @@ void free_command(Command* command) {
         if (command -> err_redir[1] != NULL) free(command -> err_redir[1]);
         free(command -> err_redir);
     }
-    // Libération éventuelle input.
-    if (command -> input != NULL) {
-        free_command(command -> input);
-    }
-    // Libération éventuelles substitutions.
-    if (command -> substitutions != NULL) {
-        for (unsigned i = 0; i < command -> nbSubstitutions; ++i) {
-            free_command(command -> substitutions[i]);
-        }
-        free(command -> substitutions);
-    }
+    // Libération espace alloué pour stocker les pointeurs vers les substitutions (les substitutions en
+    // elle-même ainsi que l'input devrait être libérées à la fin de leur exécution normalement).
+    free(command -> substitutions);
+    // Libération espace alloué pour la commande.
     free(command);
 }
