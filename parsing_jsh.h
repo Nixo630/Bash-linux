@@ -25,6 +25,7 @@ typedef struct Command Command;
 
 // Fonctions
 Command* getCommand(char* input);
+Command* create_command();
 char* first_command(char* input);
 int parse_command(Command* command);
 int parse_redirections(Command* command);

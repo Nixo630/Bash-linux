@@ -14,18 +14,8 @@ Command* getCommand(char* input) {
     char* firstCommand = first_command(input);
     bool error = false;
     do { // Pour chaque commande de la pipeline.
-        // Initialisation membres de la structure command.
-        pipeline[index] = malloc(sizeof(Command));
-        pipeline[index] -> strComm = NULL;
-        pipeline[index] -> argsComm = NULL;
-        pipeline[index] -> nbArgs = 0;
-        pipeline[index] -> in_redir = NULL;
-        pipeline[index] -> out_redir = NULL;
-        pipeline[index] -> err_redir = NULL;
-        pipeline[index] -> substitutions = NULL;
-        pipeline[index] -> nbSubstitutions = 0;
-        pipeline[index] -> input = NULL;
-        pipeline[index] -> background = false;
+        // Création et initialisation de la structure Command.
+        pipeline[index] = create_command();
         // Remplissage du champ strComm de la structure commande.
         pipeline[index] -> strComm = malloc(MAX_NB_ARGS * 10);
         strcpy(pipeline[index] -> strComm, firstCommand);
@@ -47,6 +37,23 @@ Command* getCommand(char* input) {
         return NULL;
     }
     return pipeline[index-1];
+}
+
+/* Alloue l'espace mémoire nécéssaire pour une structure commande, l'initialise avec des valeurs par
+défaut, et renvoie un pointeur vers lui. */
+Command* create_command() {
+    Command* command = malloc(sizeof(Command));
+    command -> strComm = NULL;
+    command -> argsComm = NULL;
+    command -> nbArgs = 0;
+    command -> in_redir = NULL;
+    command -> out_redir = NULL;
+    command -> err_redir = NULL;
+    command -> substitutions = NULL;
+    command -> nbSubstitutions = 0;
+    command -> input = NULL;
+    command -> background = false;
+    return command;
 }
 
 // Renvoie la première commande de la ligne de commande (éventuellement une pipeline) passée en argument.
@@ -145,7 +152,12 @@ int parse_command(Command* command) {
     // On crée des commandes à partir des substitutions récupérées. On le fait maintenant, à la fin de la
     // fonction, et pas lorsque la string de commande est découpée, pour ne pas interrompre strtok.
     if (command -> nbSubstitutions > 0) {
+        // Initialisation tableau substitutions.
         command -> substitutions = malloc(MAX_NB_SUBSTITUTIONS * sizeof(Command));
+        for (unsigned i = 0; i < MAX_NB_SUBSTITUTIONS; ++i) {
+            command -> substitutions[i] = NULL;
+        }
+        // Remplissage tableau substitutions.
         for (int i = 0; i < command -> nbSubstitutions; ++i) {
             command -> substitutions[i] = getCommand(substitutions_tmp[i]);
             free(substitutions_tmp[i]);

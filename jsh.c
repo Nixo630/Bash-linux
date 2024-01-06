@@ -79,46 +79,46 @@ void main_loop() {
 
 /* Lance l'exécution de toutes les commandes situées à l'intérieur de la structure Command passée en
 argument, gère le stockage de leur sortie, puis lance l'exécution de l'agument command. */
-void execute_command(Command* command, char* fifo_out_name) {
-    char* fifo_in_name = (char*) NULL;
+void execute_command(Command* command, int pipe_out[2]) {
+    int* pipe_in = NULL;
     if (command -> input != NULL) { // Si la commande a une input (dans le contexte d'une pipeline).
-        fifo_in_name = malloc(20);
-        strcpy(fifo_in_name, "fifo_in");
-        mkfifo(fifo_in_name, 0666);
-        execute_command(command -> input, fifo_in_name);
+        pipe_in = malloc(2);
+        pipe(pipe_in);
+        // Stockage de l'input sur un tube.
+        execute_command(command -> input, pipe_in);
+        printf("Stockage input bien passé\n");
     }
-    unsigned cpt = 0;
-    for (int i = 0; i < command -> nbArgs; ++i) { // Pour toutes les éventuelles substitutions que la commande utilise.
-        if (!strcmp(command -> argsComm[i], "fifo")) {
-            char* fifo_name = malloc(20);
-            sprintf(fifo_name, "fifo%i", cpt);
-            mkfifo(fifo_name, 0666);
-            strcpy(command -> argsComm[i], fifo_name);
-            execute_command(command -> substitutions[i], fifo_name);
-            free(fifo_name);
-        }
-        cpt++;
-    }
-    apply_redirections(command, fifo_in_name, fifo_out_name);
-    if (fifo_in_name != NULL) {
-        unlink(fifo_in_name);
-        free(fifo_in_name);
-    }
+    // unsigned cpt = 0;
+    // for (int i = 0; i < command -> nbArgs; ++i) { // Pour toutes les éventuelles substitutions que la commande utilise.
+    //     if (!strcmp(command -> argsComm[i], "fifo")) {
+    //         char* fifo_name = malloc(20);
+    //         sprintf(fifo_name, "fifo%i", cpt);
+    //         mkfifo(fifo_name, 0666);
+    //         strcpy(command -> argsComm[i], fifo_name);
+    //         execute_command(command -> substitutions[i], fifo_name);
+    //         free(fifo_name);
+    //     }
+    //     cpt++;
+    // }
+    apply_redirections(command, pipe_in, pipe_out);
+    printf("Exécution deuxième commande bien passé\n");
+    if (pipe_in != NULL) free(pipe_in);
     // Libération de la mémoire allouée pour la commande.
     free_command(command);
 }
 
-void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_name) {
+void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     int cpy_stdin, cpy_stdout, cpy_stderr;
     int fd_in = -1, fd_out = -1, fd_err = -1;
 
     // Redirection entrée.
-    if (fifo_in_name != NULL) { // Si l'entrée est sur un tube nommé.
+    if (pipe_in != NULL) { // Si l'entrée est sur un tube.
         if (command -> in_redir != NULL) {
             fprintf(stderr, "command %s: redirection entrée impossible", command -> argsComm[0]);
         } else {
             cpy_stdin = dup(0);
-            fd_in = open(fifo_in_name, O_RDONLY | O_NONBLOCK, 0666);
+            close(pipe_in[1]); // On va lire sur le tube, pas besoin de l'entrée en écriture.
+            fd_in = pipe_in[0];
             dup2(fd_in, 0);
             close(fd_in);
         }
@@ -132,13 +132,13 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
     }
 
     // Redirection sortie.
-    if (fifo_out_name != NULL) { // Si la sortie est un tube nommé.
+    if (pipe_out != NULL) { // Si la sortie est un tube nommé.
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
         } else {
             if (is_internal(command -> argsComm[0])) {
                 cpy_stdout = dup(1);
-                fd_out = open(fifo_out_name, O_WRONLY | O_NONBLOCK, 0666);
+                fd_out = pipe_out[1];
                 dup2(fd_out, 1);
                 close(fd_out);
             } else { // Cas où la commande est externe.
@@ -187,7 +187,7 @@ void apply_redirections(Command* command, char* fifo_in_name, char* fifo_out_nam
     if (is_internal(command -> argsComm[0])) {
         callRightCommand(command);
     }
-    else lastReturn = external_command(command, fifo_out_name);
+    else lastReturn = external_command(command, pipe_out);
 
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
@@ -284,17 +284,18 @@ bool correct_nbArgs(char** argsComm, unsigned min_nbArgs, unsigned max_nbArgs) {
 /*
 This function returns the error of execvp and is exuting the command "command_name" with the arguments "arguments".
 */
-int external_command(Command* command, char* fifo_out_name) {
+int external_command(Command* command, int pipe_out[2]) {
     pid_t pid = fork();
 
     if (pid == 0) { // processus enfant
         int tmp = 0;
         if (nbJobs < 40) {
-            // if (fifo_out_name != NULL) {
-            //     int fd_out = open(fifo_out_name, O_WRONLY);
-            //     dup2(fd_out, 1);
-            //     close(fd_out);
-            // }
+            if (pipe_out != NULL) { // Redirection de la sortie de la commande exécutée si c'est attendu.
+                close(pipe_out[0]);
+                int fd_out = pipe_out[1];
+                dup2(fd_out, 1);
+                close(fd_out);
+            }
             tmp = execvp(command -> argsComm[0], command -> argsComm);
             fprintf(stderr,"%s\n", strerror(errno)); // Ne s'exécute qu'en cas d'erreur dans l'exécution de execvp.
         }
