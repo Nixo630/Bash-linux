@@ -184,7 +184,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
 
     // Appel à l'exécution de la commande.
     if (is_internal(command -> argsComm[0])) {
-        callRightCommand(command);
+        lastReturn = callRightCommand(command);
     }
     else lastReturn = external_command(command, pipe_out);
 
@@ -203,67 +203,75 @@ bool is_internal(char* command_name) {
 }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
-void callRightCommand(Command* command) {
-    // Commande pwd
-    if (strcmp(command -> argsComm[0], "pwd") == 0) {
-        if (correct_nbArgs(command -> argsComm, 1, 1)) {
-            char* path = pwd();
-            printf("%s\n",path);
-            free(path);
-        }
-    }
+int callRightCommand(Command* command) {
     // Commande cd
-    else if (strcmp(command -> argsComm[0], "cd") == 0) {
+    if (strcmp(command -> argsComm[0], "cd") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 2)) {
             if (command -> argsComm[1] == NULL || strcmp(command -> argsComm[1],"$HOME") == 0) {
                 char* home = getenv("HOME");
-                cd(home);
+                return cd(home);
             }
-            else if (strcmp(command -> argsComm[1],"-") == 0) cd(previous_folder);
-            else cd(command -> argsComm[1]);
-        }
+            else if (strcmp(command -> argsComm[1],"-") == 0) return cd(previous_folder);
+            else return cd(command -> argsComm[1]);
+        } else return -1;
+    }
+    // Commande pwd
+    else if (strcmp(command -> argsComm[0], "pwd") == 0) {
+        if (correct_nbArgs(command -> argsComm, 1, 1)) {
+            char* path = pwd();
+            if (path == NULL) return -1;
+            else {
+                printf("%s\n",path);
+                free(path);
+                return 0;
+            }
+        } else return -1;
     }
     // Commande ?
     else if (strcmp(command -> argsComm[0],"?") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 1)) {
-            printf("%d\n",question_mark());
-            lastReturn = 0;
-        }
+            print_lastReturn();
+            return 0;
+        } else return -1;
     }
     // Commande jobs
     else if (strcmp(command -> argsComm[0],"jobs") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
             print_jobs();
-            lastReturn = 0;
-        }
+            return 0;
+        } else return -1;
     }
     // Commande kill
     else if (strcmp(command -> argsComm[0],"kill") == 0) {
         if (correct_nbArgs(command -> argsComm, 2, 3)) {
-            lastReturn = killJob(command -> argsComm[1],command -> argsComm[2]);
-            if (lastReturn == -1) {
+            int tmp = killJob(command -> argsComm[1],command -> argsComm[2]);
+            if (tmp == -1) {
                 perror(NULL);
             }
-        }
+            return tmp;
+        } else return -1;
     }
     // Commande exit
     else if (strcmp(command -> argsComm[0], "exit") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 2)) {
             if (command -> argsComm[1] == NULL) {
-                exit_jsh(lastReturn);
+                return exit_jsh(lastReturn);
             }
             else {
                 int int_args = convert_str_to_int(command -> argsComm[1]);
                 if (int_args == INT_MIN) {//we check the second argument doesn't contain some chars
                     fprintf(stderr,"Exit takes a normal integer as argument\n");
+                    return -1;
                 }
                 else {
-                    exit_jsh(int_args);
+                    return exit_jsh(int_args);
                 }
             }
-        }
+        } else return -1;
     }
+    else return -1;
 }
+
 
 /* Retourne true si le nombre d'arguments de la commande passée en argument est correct, 
 affiche un message d'erreur et retoure false sinon. */
@@ -357,25 +365,25 @@ char* pwd() {
         }
         else { /* Si l'erreur dans getwd n'est pas dûe à la taille du buffer passé en argument, 
         on affiche une erreur. */
-            lastReturn = -1;
             fprintf(stderr,"ERROR IN pwd");
-            return buf;
+            free(buf);
+            return NULL;
         }
     }
-    lastReturn = 0;
     return buf;
 }
 
-void cd (char* pathname) {
+
+int cd (char* pathname) {
     char* tmp = pwd();
-    lastReturn = chdir(pathname);
-    if (lastReturn == -1) {
+    int returnValue = chdir(pathname);
+    if (returnValue == -1) {
         switch (errno) {
             case (ENOENT) : {
                 char* home = getenv("HOME");
                 cd(home);
-                lastReturn = chdir(pathname);//we returned to the root and try again
-                if (lastReturn == -1) {
+                returnValue = chdir(pathname);//we returned to the root and try again
+                if (returnValue == -1) {
                     if (errno == ENOENT) {
                         cd(tmp);//if this doesn't work we return where we were
                         fprintf(stderr,"cd : non-existent folder\n");break;
@@ -398,7 +406,7 @@ void cd (char* pathname) {
             case (ENOMEM) : fprintf(stderr,"cd : Not enough memory for the core\n");break;
             default : fprintf(stderr,"Unknown error !\n");break;
         }
-        lastReturn = 1;
+        returnValue = 1;
         free(tmp);
     }
     else {
@@ -408,15 +416,19 @@ void cd (char* pathname) {
         strcpy(current_folder,tmp2);
         free(tmp2);
     }
+    return returnValue;
 }
 
-int question_mark() {
-    return lastReturn;
+
+void print_lastReturn() {
+    printf("%d\n", lastReturn);
 }
 
-void exit_jsh(int val) {
+
+int exit_jsh(int val) {
+    int returnValue;
     if (nbJobs > 0) {
-        lastReturn = 1;
+        returnValue = 1;
         //char* tmp[] = {"clear",NULL};
         //external_command(tmp,false,"clear");
         fprintf(stderr,"There are other jobs running.\n");
@@ -424,10 +436,12 @@ void exit_jsh(int val) {
         running = 0;
     }
     else {
-        lastReturn = val;
+        returnValue = val;
         running = 0;
     }
+    return returnValue;
 }
+
 
 int killJob (char* sig, char* pid) {
     int sig2 = convert_str_to_int(sig);
