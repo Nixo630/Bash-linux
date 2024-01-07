@@ -134,18 +134,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
         } 
-        // else {
-        //     if (is_internal(command -> argsComm[0])) {
-        //         /* Les fermetures des descripteurs du tube se font lors de l'utilisation de ce tube
-        //         en tant qu'entrée d'une commande. */
-        //         cpy_stdout = dup(1);
-        //         fd_out = pipe_out[1];
-        //         dup2(fd_out, 1);
-        //     } else { // Cas où la commande est externe.
-        //         cpy_stdout = dup(1);
-        //         // Le reste de la redirection est faite dans external_command().
-        //     }
-        // }
+        // Le reste de la redirection est faite dans external_command().
     } else if (command -> out_redir != NULL) { // Si la sortie est un fichier.
         cpy_stdout = dup(1);
         if (!strcmp(command -> out_redir[0], ">")) {
@@ -185,7 +174,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
 
     // Appel à l'exécution de la commande.
     if (!strcmp(command -> argsComm[0],"cd") || !strcmp(command -> argsComm[0],"exit")) {
-        lastReturn = callRightCommand(command);
+        lastReturn = callRightCommand(command); // cd et exit doivent être exécutées sur le processus jsh.
     } else lastReturn = external_command(command, pipe_out);
 
     // Remise en état.
@@ -196,11 +185,11 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
 
 /* Renvoie true ou false suivant si la commande dont le nom est passé en argument est interne
 (ne nécessite pas d'appel à execvp) ou non. */
-bool is_internal(char* command_name) {
-    if (!strcmp(command_name, "pwd") || !strcmp(command_name, "cd") || !strcmp(command_name, "?") ||
-    !strcmp(command_name, "jobs") || !strcmp(command_name, "kill") || !strcmp(command_name, "exit")) return true;
-    else return false;
-}
+// bool is_internal(char* command_name) {
+//     if (!strcmp(command_name, "pwd") || !strcmp(command_name, "cd") || !strcmp(command_name, "?") ||
+//     !strcmp(command_name, "jobs") || !strcmp(command_name, "kill") || !strcmp(command_name, "exit")) return true;
+//     else return false;
+// }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
 int callRightCommand(Command* command) {
@@ -303,6 +292,7 @@ int external_command(Command* command, int pipe_out[2]) {
                 dup2(fd_out, 1);
                 close(fd_out);
             }
+            // On exécute aussi ici les commandes internes qui affichent quelque chose.
             if (!strcmp(command -> argsComm[0], "pwd") || !strcmp(command -> argsComm[0], "?")
                 || !strcmp(command -> argsComm[0], "kill") || !strcmp(command -> argsComm[0], "jobs")) {
                 tmp = callRightCommand(command);
