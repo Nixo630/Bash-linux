@@ -28,12 +28,14 @@ Command* getCommand(char* input) {
         index++;
         firstCommand = first_command(input);
     } while (firstCommand != NULL);
-    // Liaison des commandes de la pipeline entre elles via leur champ input.
-    for (int i = 1; i < index; ++i) {
+    /* Liaison des commandes de la pipeline entre elles via leur champ input et
+    mise en arrière plan de toutes sauf la dernière. */
+    for (unsigned i = 1; i < index; ++i) {
         pipeline[i] -> input = pipeline[i-1];
+        pipeline[i-1] -> background = true;
     }
     if (error) {
-        free_command(pipeline[index]);
+        free_command(pipeline[index-1]);
         return NULL;
     }
     return pipeline[index-1];
@@ -279,7 +281,7 @@ void print_command(Command* command) {
     if (command -> out_redir != NULL) printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
     if (command -> err_redir != NULL) printf("Sortie erreur: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
     // Affichage input de la commande.
-    printf("Input: %s\n", command -> input == NULL ? "aucune" : command -> input -> argsComm[0]);
+    printf("Input: %s\n", command -> input == NULL ? "aucune" : command -> input -> strComm);
      // Affichage substitutions qu'utilise la commande.
     if (command -> nbSubstitutions > 0) {
         printf("nbSubstitutions: %i\n", command -> nbSubstitutions);
