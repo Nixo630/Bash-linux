@@ -318,7 +318,7 @@ void free_command(Command* command) {
         free(command -> err_redir);
     }
     // Libération espace alloué pour stocker les pointeurs vers les substitutions (les substitutions en
-    // elle-même ainsi que l'input devrait être libérées à la fin de leur exécution normalement).
+    // elle-mêmes ainsi que l'input sont normalement libérées à la fin de leur exécution).
     free(command -> substitutions);
     // Libération espace alloué pour la commande.
     free(command);

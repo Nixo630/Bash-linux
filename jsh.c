@@ -133,18 +133,19 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (pipe_out != NULL) { // Si la sortie est un tube.
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
-        } else {
-            if (is_internal(command -> argsComm[0])) {
-                /* Les fermetures des descripteurs du tube se font lors de l'utilisation de ce tube
-                en tant qu'entrée d'une commande. */
-                cpy_stdout = dup(1);
-                fd_out = pipe_out[1];
-                dup2(fd_out, 1);
-            } else { // Cas où la commande est externe.
-                cpy_stdout = dup(1);
-                // Le reste de la redirection est faite dans external_command().
-            }
-        }
+        } 
+        // else {
+        //     if (is_internal(command -> argsComm[0])) {
+        //         /* Les fermetures des descripteurs du tube se font lors de l'utilisation de ce tube
+        //         en tant qu'entrée d'une commande. */
+        //         cpy_stdout = dup(1);
+        //         fd_out = pipe_out[1];
+        //         dup2(fd_out, 1);
+        //     } else { // Cas où la commande est externe.
+        //         cpy_stdout = dup(1);
+        //         // Le reste de la redirection est faite dans external_command().
+        //     }
+        // }
     } else if (command -> out_redir != NULL) { // Si la sortie est un fichier.
         cpy_stdout = dup(1);
         if (!strcmp(command -> out_redir[0], ">")) {
@@ -183,10 +184,9 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     }
 
     // Appel à l'exécution de la commande.
-    if (is_internal(command -> argsComm[0])) {
+    if (!strcmp(command -> argsComm[0],"cd") || !strcmp(command -> argsComm[0],"exit")) {
         lastReturn = callRightCommand(command);
-    }
-    else lastReturn = external_command(command, pipe_out);
+    } else lastReturn = external_command(command, pipe_out);
 
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
@@ -303,8 +303,13 @@ int external_command(Command* command, int pipe_out[2]) {
                 dup2(fd_out, 1);
                 close(fd_out);
             }
-            tmp = execvp(command -> argsComm[0], command -> argsComm);
-            fprintf(stderr,"%s\n", strerror(errno)); // Ne s'exécute qu'en cas d'erreur dans l'exécution de execvp.
+            if (!strcmp(command -> argsComm[0], "pwd") || !strcmp(command -> argsComm[0], "?")
+                || !strcmp(command -> argsComm[0], "kill") || !strcmp(command -> argsComm[0], "jobs")) {
+                tmp = callRightCommand(command);
+            } else {
+                tmp = execvp(command -> argsComm[0], command -> argsComm);
+                fprintf(stderr,"%s\n", strerror(errno)); // Ne s'exécute qu'en cas d'erreur dans l'exécution de execvp.
+            }
         }
         exit(tmp);
     }
