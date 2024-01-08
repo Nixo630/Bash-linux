@@ -27,6 +27,7 @@ int main(int argc, char** argv) {
     lastReturn = 0;
     nbJobs = 0;
     l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément
+    fifo_id = 0;
 
     main_loop(); // récupère et traite les commandes entrées.
 
@@ -71,6 +72,7 @@ void main_loop() {
             add_history(strInput); // Ajoute la ligne de commande entrée à l'historique.
             Command* command = getCommand(strInput);
             if (command != NULL) execute_command(command, NULL);
+            fifo_id = 0; // Remise à 0 du numéro servant à créer le nom des fifos.
         }
     }
     // Libération de la mémoire allouée par readline.
@@ -81,26 +83,56 @@ void main_loop() {
 argument, gère le stockage de leur sortie, puis lance l'exécution de l'agument command. */
 void execute_command(Command* command, int pipe_out[2]) {
     int* pipe_in = NULL;
+    // Stockage de l'input sur un tube.
     if (command -> input != NULL) { // Si la commande a une input (dans le contexte d'une pipeline).
         pipe_in = malloc(8); // 8 octets nécessaires pour stocker 2 int.
         pipe(pipe_in);
-        // Stockage de l'input sur un tube.
         execute_command(command -> input, pipe_in);
     }
-    // unsigned cpt = 0;
-    // for (int i = 0; i < command -> nbArgs; ++i) { // Pour toutes les éventuelles substitutions que la commande utilise.
-    //     if (!strcmp(command -> argsComm[i], "fifo")) {
-    //         char* fifo_name = malloc(20);
-    //         sprintf(fifo_name, "fifo%i", cpt);
-    //         mkfifo(fifo_name, 0666);
-    //         strcpy(command -> argsComm[i], fifo_name);
-    //         execute_command(command -> substitutions[i], fifo_name);
-    //         free(fifo_name);
-    //     }
-    //     cpt++;
-    // }
+    // Stockage des substitutions sur des fifos.
+    char* noms_fifo[command -> nbSubstitutions];
+    if (command -> nbSubstitutions != 0) {
+        unsigned cpt = 0;
+        // Pour toutes les éventuelles substitutions que la commande utilise.
+        for (int i = 0; i < command -> nbArgs; ++i) {
+            if (!strcmp(command -> argsComm[i], "fifo")) {
+                // Création du nom de la fifo et de la fifo elle-même.
+                noms_fifo[i] = malloc(12);
+                sprintf(noms_fifo[i], "fifo%i", fifo_id);
+                fifo_id++;
+                mkfifo(noms_fifo[i], 0666 | O_NONBLOCK);
+                strcpy(command -> argsComm[i], noms_fifo[i]);
+                // Stockage du résultat de la subsitution sur un tube.
+                int* pipe_sub = malloc(8);
+                pipe(pipe_sub);
+                print_command(command -> substitutions[cpt]);
+                execute_command(command -> substitutions[cpt], pipe_sub);
+                // Transfert des données du tube à la fifo.
+                int fd_fifo = open(noms_fifo[i], O_WRONLY | O_NONBLOCK);
+                unsigned size = 256;
+                char* tmp = malloc(size);
+                while (1) {
+                    if (read(pipe_sub[0], tmp, size) < size) {
+                        printf("Mis sur %s : %s", noms_fifo[i], tmp);
+                        write(fd_fifo, tmp, size);
+                        break;
+                    }
+                    write(fd_fifo, tmp, size);
+                }
+                close(fd_fifo);
+                free(pipe_sub);
+                cpt++;
+            }
+        }
+    }
     apply_redirections(command, pipe_in, pipe_out);
+    // Libération de la mémoire allouée pour le tube stockant la sortie de l'input.
     if (pipe_in != NULL) free(pipe_in);
+    // Suppression des fifos et libération de la mémoire allouée pour leur nom.
+    for (unsigned i = 0; i < command -> nbSubstitutions; ++i) {
+        unlink(noms_fifo[i]);
+        free(noms_fifo[i]);
+    }
     // Libération de la mémoire allouée pour la commande.
     free_command(command);
 }
@@ -134,7 +166,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
         } 
-        // Le reste de la redirection est faite dans external_command().
+        // La redirection est faite dans external_command().
     } else if (command -> out_redir != NULL) { // Si la sortie est un fichier.
         cpy_stdout = dup(1);
         if (!strcmp(command -> out_redir[0], ">")) {
@@ -173,17 +205,21 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     }
 
     // Appel à l'exécution de la commande.
+    int tmp;
     if (!strcmp(command -> argsComm[0],"cd") || !strcmp(command -> argsComm[0],"exit")) {
-        lastReturn = callRightCommand(command); // cd et exit doivent être exécutées sur le processus jsh.
-    } else {
-        int tmp = external_command(command, pipe_out);
-        if (pipe_out == NULL) lastReturn = tmp; // On met à jour lastReturn à la fin de la pipeline.
-    }
+        tmp = callRightCommand(command); // cd et exit doivent être exécutées sur le processus jsh.
+    } else tmp = external_command(command, pipe_out);
 
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
     if (fd_out != -1) dup2(cpy_stdout, 1);
     if (fd_err != -1) dup2(cpy_stderr, 2);
+
+    // À la fin de la pipeline.
+    if (pipe_out == NULL) {
+        while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
+        lastReturn = tmp; // On met à jour lastReturn.
+    }
 }
 
 /* Renvoie true ou false suivant si la commande dont le nom est passé en argument est interne
@@ -311,8 +347,7 @@ int external_command(Command* command, int pipe_out[2]) {
             int status;
             if (!command -> background) {
                 waitpid(pid,&status,0); // On attend la fin du dernier fils et on récupère sa valeur de retour.
-                /* Si d'autres fils sont encore en cours d'exécution, ils vont essayer d'écrire sur un tube
-                qui n'a plus de lecteur, donc le noyau va leur envoyer le signal SIGPIPE. */
+                // On attend la fin du reste des fils lors du retour à apply_redirections(), après avoir retiré le dernier lecteur.
             }
             else {
                 //sleep(1);

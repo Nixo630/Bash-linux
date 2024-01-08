@@ -37,3 +37,4 @@ char* current_folder;
 char* previous_folder;
 int nbJobs;
 Job* l_jobs;
+unsigned fifo_id;
