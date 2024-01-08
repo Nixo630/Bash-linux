@@ -32,7 +32,7 @@ Command* getCommand(char* input) {
     mise en arrière plan de toutes sauf la dernière. */
     for (unsigned i = 1; i < index; ++i) {
         pipeline[i] -> input = pipeline[i-1];
-        pipeline[i-1] -> background = true;
+        // pipeline[i-1] -> background = true;
     }
     if (error) {
         free_command(pipeline[index-1]);

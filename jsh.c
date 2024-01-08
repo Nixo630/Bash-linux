@@ -175,7 +175,10 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     // Appel à l'exécution de la commande.
     if (!strcmp(command -> argsComm[0],"cd") || !strcmp(command -> argsComm[0],"exit")) {
         lastReturn = callRightCommand(command); // cd et exit doivent être exécutées sur le processus jsh.
-    } else lastReturn = external_command(command, pipe_out);
+    } else {
+        int tmp = external_command(command, pipe_out);
+        if (pipe_out == NULL) lastReturn = tmp; // On met à jour lastReturn à la fin de la pipeline.
+    }
 
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
@@ -304,46 +307,49 @@ int external_command(Command* command, int pipe_out[2]) {
         exit(tmp);
     }
     else { // processus parent
-        int status;
-        if (!command -> background) {
-            waitpid(pid,&status,0);
-        }
-        else {
-            //sleep(1);
+        if (pipe_out == NULL) { // Si on est arrivé à la fin de la pipeline.
             int status;
-            pid_t state = waitpid(pid,&status,WNOHANG);
-            if (nbJobs == 40) {
-                fprintf(stderr,"Too much jobs running simultaneously\n");
-                return -1;
-            }
-            else if (state != 0) {
-                if (WIFEXITED(status)) {//si le fils s'est terminé normalement c'est qu'en parametre il y avait une fonction instantané
-                    fprintf(stderr,"[%d] %d\n",nbJobs,pid);
-                }
-                return -1;
+            if (!command -> background) {
+                waitpid(pid,&status,0); // On attend la fin du dernier fils et on récupère sa valeur de retour.
+                while(wait(NULL) > 0); // On attend la fin des éventuels autres fils qui n'auraient pas terminé.
             }
             else {
-                nbJobs++;
-                char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
-                strcpy(command_name,command -> strComm);
-                int i = strlen(command_name)-1;
-                while (true) {//supprimer le & a la fin de la commande
-                    if (*(command_name+i) == '&') {
-                        *(command_name+i) = ' ';
-                        break;
-                    }
-                    *(command_name+i) = ' ';
-                    i--;
+                //sleep(1);
+                int status;
+                pid_t state = waitpid(pid,&status,WNOHANG);
+                if (nbJobs == 40) {
+                    fprintf(stderr,"Too much jobs running simultaneously\n");
+                    return -1;
                 }
-                char* state = malloc(sizeof(char)*8);
-                strcpy(state,"Running");
-                Job tmp = {nbJobs, pid, state, command_name};
-                l_jobs[nbJobs-1] = tmp;
-                fprintf(stderr,"[%d] %d\n",nbJobs,pid);
-                return 0;
+                else if (state != 0) {
+                    if (WIFEXITED(status)) {//si le fils s'est terminé normalement c'est qu'en parametre il y avait une fonction instantané
+                        fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+                    }
+                    return -1;
+                }
+                else {
+                    nbJobs++;
+                    char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
+                    strcpy(command_name,command -> strComm);
+                    int i = strlen(command_name)-1;
+                    while (true) {//supprimer le & a la fin de la commande
+                        if (*(command_name+i) == '&') {
+                            *(command_name+i) = ' ';
+                            break;
+                        }
+                        *(command_name+i) = ' ';
+                        i--;
+                    }
+                    char* state = malloc(sizeof(char)*8);
+                    strcpy(state,"Running");
+                    Job tmp = {nbJobs, pid, state, command_name};
+                    l_jobs[nbJobs-1] = tmp;
+                    fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+                    return 0;
+                }
             }
-        }
-        return WEXITSTATUS(status);//return the exit value of the son
+            return WEXITSTATUS(status);//return the exit value of the son
+        } else return 0; // Valeur de retour au milieu d'une pipeline: ne sera pas mise dans lastReturn.
     }
 }
 
