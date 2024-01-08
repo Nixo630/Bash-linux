@@ -28,11 +28,9 @@ Command* getCommand(char* input) {
         index++;
         firstCommand = first_command(input);
     } while (firstCommand != NULL);
-    /* Liaison des commandes de la pipeline entre elles via leur champ input et
-    mise en arrière plan de toutes sauf la dernière. */
+    // Liaison des commandes de la pipeline entre elles via leur champ input.
     for (unsigned i = 1; i < index; ++i) {
         pipeline[i] -> input = pipeline[i-1];
-        // pipeline[i-1] -> background = true;
     }
     if (error) {
         free_command(pipeline[index-1]);

@@ -311,7 +311,8 @@ int external_command(Command* command, int pipe_out[2]) {
             int status;
             if (!command -> background) {
                 waitpid(pid,&status,0); // On attend la fin du dernier fils et on récupère sa valeur de retour.
-                while(wait(NULL) > 0); // On attend la fin des éventuels autres fils qui n'auraient pas terminé.
+                /* Si d'autres fils sont encore en cours d'exécution, ils vont essayer d'écrire sur un tube
+                qui n'a plus de lecteur, donc le noyau va leur envoyer le signal SIGPIPE. */
             }
             else {
                 //sleep(1);
