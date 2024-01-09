@@ -27,7 +27,6 @@ int main(int argc, char** argv) {
     lastReturn = 0;
     nbJobs = 0;
     l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément
-    fifo_id = 0;
 
     main_loop(); // récupère et traite les commandes entrées.
 
