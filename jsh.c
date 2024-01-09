@@ -119,10 +119,7 @@ void execute_command(Command* command, int pipe_out[2]) {
     }
 
     // Libération de la mémoire allouée pour le tube stockant l'entrée.
-    if (pipe_in != NULL) {
-        close(pipe_in[0]); // Pas encore fait si jamais pipe_in stockait la sortie d'une substitution.
-        free(pipe_in);
-    }
+    if (pipe_in != NULL) free(pipe_in);
     /* Fermeture de l'entrée en lecture et libération de la mémoire allouée pour
     les tubes stockant les sorties des substitutions */
     for (unsigned i = 0; i < command -> nbSubstitutions; ++i) {
