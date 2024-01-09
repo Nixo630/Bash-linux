@@ -102,6 +102,7 @@ int parse_command(Command* command) {
     strcpy(cpy, command -> strComm);
     // char* tmp = malloc(50 * sizeof(char)); // Stocke temporairement les tokens.
     char* inside_parentheses = malloc(MAX_NB_ARGS * 10); // Stocke la commande qui constitue une substitution.
+    strcpy(inside_parentheses, ""); // Initialisation du buffer (important pour utiliser strcat).
     // Initialisation tableau argsComm.
     command -> argsComm = malloc(MAX_NB_ARGS * sizeof(char*));
     for (int i = 0; i < MAX_NB_ARGS; ++i) {
