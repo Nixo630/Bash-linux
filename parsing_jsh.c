@@ -46,6 +46,7 @@ Command* create_command() {
     command -> strComm = NULL;
     command -> argsComm = NULL;
     command -> nbArgs = 0;
+    command -> in_sub = NULL;
     command -> in_redir = NULL;
     command -> out_redir = NULL;
     command -> err_redir = NULL;
@@ -95,6 +96,7 @@ argsComm et substitutions de la structure Command. */
 int parse_command(Command* command) {
     int returnValue = 0;
     char* substitutions_tmp[MAX_NB_SUBSTITUTIONS]; // Stocke temporairement les strings des substitutions.
+    char* in_sub_tmp = NULL;
     char* cpy = malloc(MAX_NB_ARGS * 10); /* On opère le parsing sur une copie de la string
     de commande originelle */
     strcpy(cpy, command -> strComm);
@@ -139,9 +141,15 @@ int parse_command(Command* command) {
                 }
             }
             strcpy(command -> argsComm[index], "fifo");
-            substitutions_tmp[command -> nbSubstitutions] = malloc(MAX_NB_ARGS * 10);
-            strcpy(substitutions_tmp[command -> nbSubstitutions], inside_parentheses);
-            command -> nbSubstitutions++;
+            if (command -> argsComm[index-1] != NULL && is_redirection_symbol(command -> argsComm[index-1])) {
+                in_sub_tmp = malloc(MAX_NB_ARGS * 10);
+                strcpy(in_sub_tmp, inside_parentheses);
+            } else {
+                substitutions_tmp[command -> nbSubstitutions] = malloc(MAX_NB_ARGS * 10);
+                strcpy(substitutions_tmp[command -> nbSubstitutions], inside_parentheses);
+                command -> nbSubstitutions++;
+            }
+            memset(inside_parentheses,0,strlen(inside_parentheses));
         } else strcpy(command -> argsComm[index],tmp);
         ++index;
     }
@@ -163,6 +171,12 @@ int parse_command(Command* command) {
             free(substitutions_tmp[i]);
             if (command -> substitutions[i] == NULL) {returnValue = -1;break;}
         }
+    }
+    // Pour l'éventuelle substitution au fichier d'entrée.
+    if (in_sub_tmp != NULL) {
+        command -> in_sub = getCommand(in_sub_tmp);
+        free(in_sub_tmp);
+        if (command -> in_sub == NULL) returnValue = -1;
     }
     return returnValue;
 }
@@ -190,15 +204,15 @@ int parse_redirections(Command* command) {
             }
         }
         int redirection_value = is_redirection_symbol(command -> argsComm[i]);
-        if (redirection_value != -1) {
-            if (command -> argsComm[i+1] == NULL || !strcmp(command -> argsComm[i+1], "fifo") ||
-                is_redirection_symbol(command -> argsComm[i+1]) != -1) {
+        if (redirection_value) {
+            if (command -> argsComm[i+1] == NULL || !(!strcmp(command -> argsComm[i+1], "fifo")) ||
+                is_redirection_symbol(command -> argsComm[i+1])) {
                 fprintf(stderr,"Commande %s: Symbole de redirection non suivi d'un nom de fichier.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
             }
             switch (redirection_value) {
-                case 0: // Cas d'un symbole de redirection d'entrée.
+                case 1: // Cas d'un symbole de redirection d'entrée.
                     if (command -> in_redir != NULL) {
                         fprintf(stderr,"Commande %s: Trop de redirections de l'entrée.\n", command -> argsComm[0]);
                         return -1;
@@ -209,7 +223,7 @@ int parse_redirections(Command* command) {
                     command -> in_redir[1] = malloc(MAX_SIZE_ARG);
                     strcpy(command -> in_redir[1], command -> argsComm[i+1]);
                     break;
-                case 1: // Cas d'un symbole de redirection de sortie.
+                case 2: // Cas d'un symbole de redirection de sortie.
                     if (command -> out_redir != NULL) {
                         fprintf(stderr,"Commande %s: Trop de redirections de la sortie.\n", command -> argsComm[0]);
                         returnValue = -1;
@@ -221,7 +235,7 @@ int parse_redirections(Command* command) {
                     command -> out_redir[1] = malloc(MAX_SIZE_ARG);
                     strcpy(command -> out_redir[1], command -> argsComm[i+1]);
                     break;
-                case 2: // Cas d'un symbole de redirection de sortie erreur.
+                case 3: // Cas d'un symbole de redirection de sortie erreur.
                     if (command -> err_redir != NULL) {
                         fprintf(stderr,"Commande %s: Trop de redirections de la sortie erreur.\n", command -> argsComm[0]);
                         returnValue = -1;
@@ -254,10 +268,10 @@ int parse_redirections(Command* command) {
 /* Suivant si la string passée en argument est un symbole de redirection d'entrée, de sortie, de sortie
 erreur ou n'est pas un symbole de redirection, la fonction renvoie respectivement la valeur 0,1,2 ou -1.*/
 int is_redirection_symbol(char* string) {
-    if (!strcmp(string, "<")) return 0;
-    else if (!strcmp(string, ">") || !strcmp(string, ">|") || !strcmp(string, ">>")) return 1;
-    else if (!strcmp(string, "2>") || !strcmp(string, "2>|") || !strcmp(string, "2>>")) return 2;
-    else return -1;
+    if (!strcmp(string, "<")) return 1;
+    else if (!strcmp(string, ">") || !strcmp(string, ">|") || !strcmp(string, ">>")) return 2;
+    else if (!strcmp(string, "2>") || !strcmp(string, "2>|") || !strcmp(string, "2>>")) return 3;
+    else return 0;
 }
 
 /* Affiche une commande, son input (commande qui la précède dans une pipeline), et les substitutions qu'elle
@@ -266,28 +280,25 @@ void print_command(Command* command) {
     // Affichage string de commande.
     printf("strComm: %s\n", command -> strComm);
     // Affichage arguments de la commande.
-    printf("nbArgs:%i\n", command -> nbArgs);
+    printf("nbArgs: %i\n", command -> nbArgs);
     printf("argsComm: ");
     for (int i = 0; i < command -> nbArgs-1; ++i) {
         printf("%s,", command -> argsComm[i]);
     }
     printf("%s\n",command -> argsComm[command -> nbArgs-1]);
     // Affichage du fait que la commande doit être exécutée en arrière-plan ou non.
-    printf("Background:%s\n", command -> background ? "yes" : "no");
+    printf("Background: %s\n", command -> background ? "yes" : "no");
     // Affichage entrée, sortie et sortie erreur standard de la commande.
     if (command -> in_redir != NULL) printf("Entrée: %s %s\n", command -> in_redir[0], command -> in_redir[1]);
     if (command -> out_redir != NULL) printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
     if (command -> err_redir != NULL) printf("Sortie erreur: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
     // Affichage input de la commande.
     printf("Input: %s\n", command -> input == NULL ? "aucune" : command -> input -> strComm);
-     // Affichage substitutions qu'utilise la commande.
-    if (command -> nbSubstitutions > 0) {
-        printf("nbSubstitutions: %i\n", command -> nbSubstitutions);
-        for (int i = 0; i < command -> nbSubstitutions-1; ++i) {
-            printf("%s, ", command -> substitutions[i] -> argsComm[0]);
-        }
-        printf("%s\n", command -> substitutions[command -> nbSubstitutions-1] -> argsComm[0]);
-    }
+    // Affichage substitutions qu'utilise la commande.
+    printf("Substitutions: %i\n", command -> nbSubstitutions > 0);
+    // for (int i = 0; i < command -> nbSubstitutions-1; ++i) {
+    //     printf("(%i) %s\n", i+1, command -> substitutions[i] -> strComm);
+    // }
 }
 
 // Libère toute la mémoire allouée pour une structure Command.

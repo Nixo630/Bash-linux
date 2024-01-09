@@ -84,67 +84,65 @@ argument, gère le stockage de leur sortie, puis lance l'exécution de l'agument
 void execute_command(Command* command, int pipe_out[2]) {
     int* pipe_in = NULL;
     // Stockage de l'input sur un tube.
-    if (command -> input != NULL) { // Si la commande a une input (dans le contexte d'une pipeline).
+    if (command -> input != NULL) {
         pipe_in = malloc(8); // 8 octets nécessaires pour stocker 2 int.
         pipe(pipe_in);
         execute_command(command -> input, pipe_in);
+    } else if (command -> in_sub != NULL) { // Si l'entrée est la sortie d'une substitution.
+        pipe_in = malloc(8);
+        pipe(pipe_in);
+        execute_command(command -> in_sub, pipe_in);
     }
-    // Stockage des substitutions sur des fifos.
-    char* noms_fifo[command -> nbSubstitutions];
+    // Stockage des substitutions sur des tubes anonymes.
+    int* tubes[command -> nbSubstitutions];
     if (command -> nbSubstitutions != 0) {
         unsigned cpt = 0;
         // Pour toutes les éventuelles substitutions que la commande utilise.
         for (int i = 0; i < command -> nbArgs; ++i) {
             if (!strcmp(command -> argsComm[i], "fifo")) {
-                // Création du nom de la fifo et de la fifo elle-même.
-                noms_fifo[i] = malloc(12);
-                sprintf(noms_fifo[i], "fifo%i", fifo_id);
-                fifo_id++;
-                mkfifo(noms_fifo[i], 0666 | O_NONBLOCK);
-                strcpy(command -> argsComm[i], noms_fifo[i]);
-                // Stockage du résultat de la subsitution sur un tube.
-                int* pipe_sub = malloc(8);
-                pipe(pipe_sub);
-                print_command(command -> substitutions[cpt]);
-                execute_command(command -> substitutions[cpt], pipe_sub);
-                // Transfert des données du tube à la fifo.
-                int fd_fifo = open(noms_fifo[i], O_WRONLY | O_NONBLOCK);
-                unsigned size = 256;
-                char* tmp = malloc(size);
-                while (1) {
-                    if (read(pipe_sub[0], tmp, size) < size) {
-                        printf("Mis sur %s : %s", noms_fifo[i], tmp);
-                        write(fd_fifo, tmp, size);
-                        break;
-                    }
-                    write(fd_fifo, tmp, size);
-                }
-                close(fd_fifo);
-                free(pipe_sub);
+                int* pfd = malloc(8);
+                tubes[cpt] = pfd;
+                pipe(pfd);
+                // Stockage sur le tube.
+                execute_command(command -> substitutions[cpt], pfd);
+                close(pfd[1]); // Fermeture de l'ouverture du tube en écriture.
+                sprintf(command -> argsComm[i], "/dev/fd/%i", pfd[0]);
                 cpt++;
             }
         }
     }
-    apply_redirections(command, pipe_in, pipe_out);
-    // Libération de la mémoire allouée pour le tube stockant la sortie de l'input.
-    if (pipe_in != NULL) free(pipe_in);
-    // Suppression des fifos et libération de la mémoire allouée pour leur nom.
+
+    int tmp = apply_redirections(command, pipe_in, pipe_out);
+    // À la fin de la pipeline.
+    if (pipe_out == NULL) {
+        while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
+        lastReturn = tmp; // On met à jour lastReturn.
+    }
+
+    // Libération de la mémoire allouée pour le tube stockant l'entrée.
+    if (pipe_in != NULL) {
+        close(pipe_in[0]); // Pas encore fait si jamais pipe_in stockait la sortie d'une substitution.
+        free(pipe_in);
+    }
+    /* Fermeture de l'entrée en lecture et libération de la mémoire allouée pour
+    les tubes stockant les sorties des substitutions */
     for (unsigned i = 0; i < command -> nbSubstitutions; ++i) {
-        unlink(noms_fifo[i]);
-        free(noms_fifo[i]);
+        close(tubes[i][0]);
+        free(tubes[i]);
     }
     // Libération de la mémoire allouée pour la commande.
     free_command(command);
 }
 
-void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
+int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     int cpy_stdin, cpy_stdout, cpy_stderr;
     int fd_in = -1, fd_out = -1, fd_err = -1;
 
     // Redirection entrée.
     if (pipe_in != NULL) { // Si l'entrée est sur un tube.
-        if (command -> in_redir != NULL) {
+        if (command -> in_redir != NULL && strcmp(command -> in_redir[1], "fifo")) {
             fprintf(stderr, "command %s: redirection entrée impossible", command -> argsComm[0]);
+            return -1;
         } else {
             cpy_stdin = dup(0);
             close(pipe_in[1]); // On va lire sur le tube, pas besoin de l'entrée en écriture.
@@ -165,6 +163,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (pipe_out != NULL) { // Si la sortie est un tube.
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
+            return -1;
         } 
         // La redirection est faite dans external_command().
     } else if (command -> out_redir != NULL) { // Si la sortie est un fichier.
@@ -173,8 +172,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0666);
             if (fd_out == -1) {
                 fprintf(stderr,"bash : %s: file already exist.\n", command -> argsComm[0]);
-                lastReturn =  1;
-                return;
+                return -1;
             }
         } else if (!strcmp(command -> out_redir[0], ">|")) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -192,8 +190,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0666);
             if (fd_err == -1) {
                 fprintf(stderr,"bash : %s: file already exists.\n", command -> argsComm[0]);
-                lastReturn =  1;
-                return;
+                return -1;
             }
         } else if (!strcmp(command -> err_redir[0], "2>|")) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -215,20 +212,9 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (fd_out != -1) dup2(cpy_stdout, 1);
     if (fd_err != -1) dup2(cpy_stderr, 2);
 
-    // À la fin de la pipeline.
-    if (pipe_out == NULL) {
-        while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
-        lastReturn = tmp; // On met à jour lastReturn.
-    }
+    return tmp;
 }
 
-/* Renvoie true ou false suivant si la commande dont le nom est passé en argument est interne
-(ne nécessite pas d'appel à execvp) ou non. */
-// bool is_internal(char* command_name) {
-//     if (!strcmp(command_name, "pwd") || !strcmp(command_name, "cd") || !strcmp(command_name, "?") ||
-//     !strcmp(command_name, "jobs") || !strcmp(command_name, "kill") || !strcmp(command_name, "exit")) return true;
-//     else return false;
-// }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
 int callRightCommand(Command* command) {
