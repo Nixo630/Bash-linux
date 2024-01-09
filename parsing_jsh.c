@@ -205,8 +205,7 @@ int parse_redirections(Command* command) {
         }
         int redirection_value = is_redirection_symbol(command -> argsComm[i]);
         if (redirection_value) {
-            if (command -> argsComm[i+1] == NULL || !(!strcmp(command -> argsComm[i+1], "fifo")) ||
-                is_redirection_symbol(command -> argsComm[i+1])) {
+            if (command -> argsComm[i+1] == NULL || is_redirection_symbol(command -> argsComm[i+1])) {
                 fprintf(stderr,"Commande %s: Symbole de redirection non suivi d'un nom de fichier.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
@@ -266,7 +265,7 @@ int parse_redirections(Command* command) {
 }
 
 /* Suivant si la string passée en argument est un symbole de redirection d'entrée, de sortie, de sortie
-erreur ou n'est pas un symbole de redirection, la fonction renvoie respectivement la valeur 0,1,2 ou -1.*/
+erreur ou n'est pas un symbole de redirection, la fonction renvoie respectivement la valeur 1,2,3 ou 0.*/
 int is_redirection_symbol(char* string) {
     if (!strcmp(string, "<")) return 1;
     else if (!strcmp(string, ">") || !strcmp(string, ">|") || !strcmp(string, ">>")) return 2;

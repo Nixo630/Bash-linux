@@ -111,14 +111,7 @@ void execute_command(Command* command, int pipe_out[2]) {
             }
         }
     }
-
-    int tmp = apply_redirections(command, pipe_in, pipe_out);
-    // À la fin de la pipeline.
-    if (pipe_out == NULL) {
-        while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
-        lastReturn = tmp; // On met à jour lastReturn.
-    }
-
+    apply_redirections(command, pipe_in, pipe_out);
     // Libération de la mémoire allouée pour le tube stockant l'entrée.
     if (pipe_in != NULL) {
         close(pipe_in[0]); // Pas encore fait si jamais pipe_in stockait la sortie d'une substitution.
@@ -134,7 +127,7 @@ void execute_command(Command* command, int pipe_out[2]) {
     free_command(command);
 }
 
-int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
+void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     int cpy_stdin, cpy_stdout, cpy_stderr;
     int fd_in = -1, fd_out = -1, fd_err = -1;
 
@@ -142,7 +135,6 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (pipe_in != NULL) { // Si l'entrée est sur un tube.
         if (command -> in_redir != NULL && strcmp(command -> in_redir[1], "fifo")) {
             fprintf(stderr, "command %s: redirection entrée impossible", command -> argsComm[0]);
-            return -1;
         } else {
             cpy_stdin = dup(0);
             close(pipe_in[1]); // On va lire sur le tube, pas besoin de l'entrée en écriture.
@@ -163,7 +155,6 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (pipe_out != NULL) { // Si la sortie est un tube.
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
-            return -1;
         } 
         // La redirection est faite dans external_command().
     } else if (command -> out_redir != NULL) { // Si la sortie est un fichier.
@@ -172,7 +163,8 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0666);
             if (fd_out == -1) {
                 fprintf(stderr,"bash : %s: file already exist.\n", command -> argsComm[0]);
-                return -1;
+                lastReturn =  1;
+                return;
             }
         } else if (!strcmp(command -> out_redir[0], ">|")) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -190,7 +182,8 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0666);
             if (fd_err == -1) {
                 fprintf(stderr,"bash : %s: file already exists.\n", command -> argsComm[0]);
-                return -1;
+                lastReturn =  1;
+                return;
             }
         } else if (!strcmp(command -> err_redir[0], "2>|")) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -212,9 +205,12 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (fd_out != -1) dup2(cpy_stdout, 1);
     if (fd_err != -1) dup2(cpy_stderr, 2);
 
-    return tmp;
+    // À la fin de la pipeline.
+    if (pipe_out == NULL) {
+        while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
+        lastReturn = tmp; // On met à jour lastReturn.
+    }
 }
-
 
 // Exécute la bonne commande à partir des mots donnés en argument.
 int callRightCommand(Command* command) {
