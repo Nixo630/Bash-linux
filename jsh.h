@@ -24,7 +24,7 @@ int killJob (char* sig, char* pid);
 int main(int argc, char** argv);
 void main_loop();
 void execute_command(Command* command, int pipe_out[2]);
-void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]);
+int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]);
 int callRightCommand(Command* command);
 bool correct_nbArgs(char**, unsigned, unsigned);
 char* getPrompt();

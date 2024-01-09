@@ -111,7 +111,14 @@ void execute_command(Command* command, int pipe_out[2]) {
             }
         }
     }
-    apply_redirections(command, pipe_in, pipe_out);
+
+    int tmp = apply_redirections(command, pipe_in, pipe_out);
+    // À la fin de la pipeline.
+    if (pipe_out == NULL) {
+        while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
+        lastReturn = tmp; // On met à jour lastReturn.
+    }
+
     // Libération de la mémoire allouée pour le tube stockant l'entrée.
     if (pipe_in != NULL) {
         close(pipe_in[0]); // Pas encore fait si jamais pipe_in stockait la sortie d'une substitution.
@@ -127,7 +134,7 @@ void execute_command(Command* command, int pipe_out[2]) {
     free_command(command);
 }
 
-void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
+int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     int cpy_stdin, cpy_stdout, cpy_stderr;
     int fd_in = -1, fd_out = -1, fd_err = -1;
 
@@ -135,6 +142,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (pipe_in != NULL) { // Si l'entrée est sur un tube.
         if (command -> in_redir != NULL && strcmp(command -> in_redir[1], "fifo")) {
             fprintf(stderr, "command %s: redirection entrée impossible", command -> argsComm[0]);
+            return 1;
         } else {
             cpy_stdin = dup(0);
             close(pipe_in[1]); // On va lire sur le tube, pas besoin de l'entrée en écriture.
@@ -155,6 +163,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (pipe_out != NULL) { // Si la sortie est un tube.
         if (command -> out_redir != NULL) {
             fprintf(stderr, "command %s: redirection sortie impossible", command -> argsComm[0]);
+            return 1;
         } 
         // La redirection est faite dans external_command().
     } else if (command -> out_redir != NULL) { // Si la sortie est un fichier.
@@ -163,8 +172,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0666);
             if (fd_out == -1) {
                 fprintf(stderr,"bash : %s: file already exist.\n", command -> argsComm[0]);
-                lastReturn =  1;
-                return;
+                return 1;
             }
         } else if (!strcmp(command -> out_redir[0], ">|")) {
             fd_out = open(command -> out_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -182,8 +190,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_APPEND|O_CREAT|O_EXCL, 0666);
             if (fd_err == -1) {
                 fprintf(stderr,"bash : %s: file already exists.\n", command -> argsComm[0]);
-                lastReturn =  1;
-                return;
+                return 1;
             }
         } else if (!strcmp(command -> err_redir[0], "2>|")) {
             fd_err = open(command -> err_redir[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
@@ -205,11 +212,7 @@ void apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     if (fd_out != -1) dup2(cpy_stdout, 1);
     if (fd_err != -1) dup2(cpy_stderr, 2);
 
-    // À la fin de la pipeline.
-    if (pipe_out == NULL) {
-        while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
-        lastReturn = tmp; // On met à jour lastReturn.
-    }
+    return tmp;
 }
 
 // Exécute la bonne commande à partir des mots donnés en argument.
@@ -223,33 +226,33 @@ int callRightCommand(Command* command) {
             }
             else if (strcmp(command -> argsComm[1],"-") == 0) return cd(previous_folder);
             else return cd(command -> argsComm[1]);
-        } else return -1;
+        } else return 1;
     }
     // Commande pwd
     else if (strcmp(command -> argsComm[0], "pwd") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 1)) {
             char* path = pwd();
-            if (path == NULL) return -1;
+            if (path == NULL) return 1;
             else {
                 printf("%s\n",path);
                 free(path);
                 return 0;
             }
-        } else return -1;
+        } else return 1;
     }
     // Commande ?
     else if (strcmp(command -> argsComm[0],"?") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 1)) {
             print_lastReturn();
             return 0;
-        } else return -1;
+        } else return 1;
     }
     // Commande jobs
     else if (strcmp(command -> argsComm[0],"jobs") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
             print_jobs();
             return 0;
-        } else return -1;
+        } else return 1;
     }
     // Commande kill
     else if (strcmp(command -> argsComm[0],"kill") == 0) {
@@ -259,7 +262,7 @@ int callRightCommand(Command* command) {
                 perror(NULL);
             }
             return tmp;
-        } else return -1;
+        } else return 1;
     }
     // Commande exit
     else if (strcmp(command -> argsComm[0], "exit") == 0) {
@@ -271,15 +274,15 @@ int callRightCommand(Command* command) {
                 int int_args = convert_str_to_int(command -> argsComm[1]);
                 if (int_args == INT_MIN) {//we check the second argument doesn't contain some chars
                     fprintf(stderr,"Exit takes a normal integer as argument\n");
-                    return -1;
+                    return 1;
                 }
                 else {
                     return exit_jsh(int_args);
                 }
             }
-        } else return -1;
+        } else return 1;
     }
-    else return -1;
+    else return 1;
 }
 
 
@@ -294,7 +297,6 @@ bool correct_nbArgs(char** argsComm, unsigned min_nbArgs, unsigned max_nbArgs) {
         fprintf(stderr,"bash : %s: too many arguments\n", argsComm[0]);
         correct_nb = false;
     }
-    if (!(correct_nb)) lastReturn = -1;
     return correct_nb;
 }
 
@@ -337,13 +339,13 @@ int external_command(Command* command, int pipe_out[2]) {
                 pid_t state = waitpid(pid,&status,WNOHANG);
                 if (nbJobs == 40) {
                     fprintf(stderr,"Too much jobs running simultaneously\n");
-                    return -1;
+                    return 1;
                 }
                 else if (state != 0) {
                     if (WIFEXITED(status)) {//si le fils s'est terminé normalement c'est qu'en parametre il y avait une fonction instantané
                         fprintf(stderr,"[%d] %d\n",nbJobs,pid);
                     }
-                    return -1;
+                    return 1;
                 }
                 else {
                     nbJobs++;
