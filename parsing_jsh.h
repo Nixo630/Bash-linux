@@ -1,5 +1,5 @@
 #include <stddef.h>
-#define MAX_NB_ARGS 32 // Nombre d'arguments max d'une commande (une substitution compte pour 1).
+#define MAX_NB_ARGS 64 // Nombre d'arguments max d'une commande (une substitution compte pour 1).
 #define MAX_SIZE_ARG 128 // Taille maximum pour un argument (token) d'une commande.
 #define MAX_NB_SUBSTITUTIONS 32 // Nombre de substitutions max pour une commande.
 #define MAX_LENGTH_PIPELINE 32 // Nombre de commandes max dans une pipeline.
@@ -8,7 +8,7 @@
 struct Command {
     char* strComm; // La string de commande.
     char** argsComm; /* Les différents arguments de la commande (avec la string "fifo" aux
-    emplacements des futures éventuels tubes nommés, et sans les éventuelles redirections et symbole '&'). */
+    emplacements des futures éventuels tubes, et sans les éventuelles redirections et symbole '&'). */
     unsigned nbArgs; // Le nombre d'arguments de la commande.
     struct Command* in_sub; // L'éventuelle substitution à un fichier d'entrée.
     char** in_redir; // Symbole de redirection de l'entrée et nom du fichier sur lequel rediriger.

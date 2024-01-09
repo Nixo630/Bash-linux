@@ -72,7 +72,6 @@ void main_loop() {
             add_history(strInput); // Ajoute la ligne de commande entrée à l'historique.
             Command* command = getCommand(strInput);
             if (command != NULL) execute_command(command, NULL);
-            fifo_id = 0; // Remise à 0 du numéro servant à créer le nom des fifos.
         }
     }
     // Libération de la mémoire allouée par readline.
