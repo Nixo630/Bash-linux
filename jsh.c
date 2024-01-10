@@ -466,6 +466,24 @@ int exit_jsh(int val) {
     return returnValue;
 }
 
+int bg(int job_num) {
+    Job *job = & l_jobs[job_num];
+
+    if (job == NULL) {
+        fprintf(stderr, "Could not run bg, process not found.\n");
+        return 0;
+    }
+
+
+    if (kill(job->pid, SIGCONT) < 0) {
+        perror("Could not run bg ");
+        return 0;
+    }
+
+    printf("[%d] %s %d running in Background\n", job_num, job->command_name, job->pid);
+
+    return 1;
+}
 
 int killJob (char* sig, char* pid) {
     char* pid2;
