@@ -271,10 +271,29 @@ int callRightCommand(Command* command) {
             return tmp;
         } else return 1;
     }
+    // Commande bg
     else if (strcmp(command -> argsComm[0],"bg") == 0) {
         
         if (correct_nbArgs(command -> argsComm, 2, 3)) {
-            return bg(0);
+            char * s = command -> argsComm[1];
+            char * secondlast = s[strlen(s)-2];
+            char * last = s[strlen(s)-1];
+            char * final[2];
+            if (!strcmp(secondlast,"%")) {
+                final[0] = secondlast;
+                final[1] = last;  
+            }
+            else final[0] = last;
+            int result = bg(convert_str_to_int(final));
+            free(secondlast);
+            free(last);
+            free(final);
+            free(s);
+            return result;
+            
+        }
+        else{
+            return 1;
         }
     }
     
@@ -470,22 +489,22 @@ int exit_jsh(int val) {
 }
 
 int bg(int job_num) {
-    Job *job = & l_jobs[job_num];
 
-    if (job == NULL) {
+    if (job_num > nbJobs) {
         fprintf(stderr, "Could not run bg, process not found.\n");
-        return 0;
+        return 1;
     }
 
+    Job *job = & l_jobs[job_num];
 
     if (kill(job->pid, SIGCONT) < 0) {
         perror("Could not run bg ");
-        return 0;
+        return 1;
     }
 
     printf("[%d] %s %d running in Background\n", job_num, job->command_name, job->pid);
-
-    return 1;
+    free(job);
+    return 0;
 }
 
 void create_job(char * name, char *status, pid_t pid){
