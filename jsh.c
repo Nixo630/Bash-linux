@@ -271,6 +271,13 @@ int callRightCommand(Command* command) {
             return tmp;
         } else return 1;
     }
+    else if (strcmp(command -> argsComm[0],"bg") == 0) {
+        
+        if (correct_nbArgs(command -> argsComm, 2, 3)) {
+            return bg(0);
+        }
+    }
+    
     // Commande exit
     else if (strcmp(command -> argsComm[0], "exit") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 2)) {
@@ -483,6 +490,16 @@ int bg(int job_num) {
     printf("[%d] %s %d running in Background\n", job_num, job->command_name, job->pid);
 
     return 1;
+}
+
+Job create_job(char * name, pid_t pid){
+    nbJobs++;
+    char* state = malloc(sizeof(char)*8);
+    strcpy(state,"RunniSng");
+    Job job = {nbJobs, pid, state, name};
+    l_jobs[nbJobs-1] = job;
+    return job;
+
 }
 
 int killJob (char* sig, char* pid) {
