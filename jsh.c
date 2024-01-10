@@ -413,15 +413,18 @@ int external_command(Command* command, int pipe_out[2]) {
                     char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
                     strcpy(command_name,command -> strComm);
                     int i = strlen(command_name)-1;
+                    char * ground = malloc(sizeof(char) * 11);
+                    strcpy(ground,"Foreground");
                     while (true) {//supprimer le & a la fin de la commande
                         if (*(command_name+i) == '&') {
+                            strcpy(ground,"Background");
                             *(command_name+i) = ' ';
                             break;
                         }
                         *(command_name+i) = ' ';
                         i--;
                     }
-                    create_job(command_name,"Running",pid);
+                    create_job(command_name,"Running",pid,ground);
                     fprintf(stderr,"[%d] %d\n",nbJobs,pid);
                     return 0;
                 }
@@ -595,11 +598,11 @@ int fg(int job_num) {
     return 0;
 }
 
-void create_job(char * command_name, char *status, pid_t pid){
+void create_job(char * command_name, char *status, pid_t pid, char * ground){
     nbJobs++;
     char* state = malloc(sizeof(char)*strlen(status));
     strcpy(state,status);
-    Job job = {nbJobs, pid, state, command_name,"Frontground"};
+    Job job = {nbJobs, pid, state, command_name,ground};
     l_jobs[nbJobs-1] = job;
 
 

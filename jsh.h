@@ -29,7 +29,7 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]);
 int callRightCommand(Command* command);
 bool correct_nbArgs(char**, unsigned, unsigned);
 char* getPrompt();
-void create_job(char * command_name, char *status, pid_t pid);
+void create_job(char * command_name, char *status, pid_t pid, char * ground);
 int bg(int job_num);
 int fg(int job_num);
 
