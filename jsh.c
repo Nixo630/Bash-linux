@@ -296,6 +296,30 @@ int callRightCommand(Command* command) {
             return 1;
         }
     }
+    // Commande fg
+    else if (strcmp(command -> argsComm[0],"fg") == 0) {
+        
+        if (correct_nbArgs(command -> argsComm, 2, 3)) {
+            char * s = command -> argsComm[1];
+            char * secondlast = s[strlen(s)-2];
+            char * last = s[strlen(s)-1];
+            char * final[2];
+            if (!strcmp(secondlast,"%")) {
+                final[0] = secondlast;
+                final[1] = last;  
+            }
+            else final[0] = last;
+            int result = fg(convert_str_to_int(final));
+            free(secondlast);
+            free(last);
+            free(final);
+            return result;
+            
+        }
+        else{
+            return 1;
+        }
+    }
     
     // Commande exit
     else if (strcmp(command -> argsComm[0], "exit") == 0) {
@@ -496,22 +520,45 @@ int bg(int job_num) {
     }
 
     Job *job = & l_jobs[job_num];
+        if(!strcmp(job->ground,"FrontGround")){
+        fprintf(stderr, "Process already running in Background.\n");
+        return 1;
+    }
 
     if (kill(job->pid, SIGCONT) < 0) {
         perror("Could not run bg ");
         return 1;
     }
-
+    job->ground = "Background";
     printf("[%d] %s %d running in Background\n", job_num, job->command_name, job->pid);
-    free(job);
     return 0;
 }
 
-void create_job(char * name, char *status, pid_t pid){
+
+
+int fg(int job_num) {
+
+    if (job_num > nbJobs) {
+        fprintf(stderr, "Could not run bg, process not found.\n");
+        return 1;
+    }
+
+    Job *job = & l_jobs[job_num];
+    if(!strcmp(job->ground,"Background")){
+        fprintf(stderr, "Process already running in Frontground.\n");
+        return 1;
+    }
+
+    job->ground = "Frontground";
+    printf("[%d] %s %d running in Frontground\n", job_num, job->command_name, job->pid);
+    return 0;
+}
+
+void create_job(char * command_name, char *status, pid_t pid){
     nbJobs++;
     char* state = malloc(sizeof(char)*strlen(status));
     strcpy(state,status);
-    Job job = {nbJobs, pid, state, name};
+    Job job = {nbJobs, pid, state, command_name,"Frontground"};
     l_jobs[nbJobs-1] = job;
 
 

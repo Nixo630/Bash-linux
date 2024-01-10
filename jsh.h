@@ -6,6 +6,7 @@ struct Job {
     int pid;
     char* state;
     char* command_name;
+    char* ground;
 };
 typedef struct Job Job;
 
