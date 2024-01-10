@@ -361,7 +361,6 @@ int external_command(Command* command, int pipe_out[2]) {
                     return 1;
                 }
                 else {
-                    nbJobs++;
                     char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
                     strcpy(command_name,command -> strComm);
                     int i = strlen(command_name)-1;
@@ -373,10 +372,7 @@ int external_command(Command* command, int pipe_out[2]) {
                         *(command_name+i) = ' ';
                         i--;
                     }
-                    char* state = malloc(sizeof(char)*8);
-                    strcpy(state,"Running");
-                    Job tmp = {nbJobs, pid, state, command_name};
-                    l_jobs[nbJobs-1] = tmp;
+                    create_job(command_name,"Running",pid);
                     fprintf(stderr,"[%d] %d\n",nbJobs,pid);
                     return 0;
                 }
@@ -492,13 +488,13 @@ int bg(int job_num) {
     return 1;
 }
 
-Job create_job(char * name, pid_t pid){
+void create_job(char * name, char *status, pid_t pid){
     nbJobs++;
-    char* state = malloc(sizeof(char)*8);
-    strcpy(state,"RunniSng");
+    char* state = malloc(sizeof(char)*strlen(status));
+    strcpy(state,status);
     Job job = {nbJobs, pid, state, name};
     l_jobs[nbJobs-1] = job;
-    return job;
+
 
 }
 
