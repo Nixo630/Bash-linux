@@ -112,7 +112,7 @@ void execute_command(Command* command, int pipe_out[2]) {
 
     int tmp = apply_redirections(command, pipe_in, pipe_out);
     // À la fin de la pipeline.
-    if (pipe_out == NULL) {
+    if (pipe_out == NULL && !(command -> background)) {
         while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
         lastReturn = tmp; // On met à jour lastReturn.
     }
@@ -329,7 +329,6 @@ int external_command(Command* command, int pipe_out[2]) {
                 // On attend la fin du reste des fils lors du retour à apply_redirections(), après avoir retiré le dernier lecteur.
             }
             else {
-                //sleep(1);
                 int status;
                 pid_t state = waitpid(pid,&status,WNOHANG);
                 if (nbJobs == 40) {
@@ -445,10 +444,7 @@ int exit_jsh(int val) {
     int returnValue;
     if (nbJobs > 0) {
         returnValue = 1;
-        //char* tmp[] = {"clear",NULL};
-        //external_command(tmp,false,"clear");
         fprintf(stderr,"There are other jobs running.\n");
-        //main_loop();
         running = 0;
     }
     else {

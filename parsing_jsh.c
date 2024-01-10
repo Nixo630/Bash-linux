@@ -128,7 +128,7 @@ int parse_command(Command* command) {
             while(1) {
                 tmp = strtok(NULL, " ");
                 if (tmp == NULL) {
-                    fprintf(stderr,"Commande %s: Parenthèses mal formées.\n", command -> argsComm[0]);
+                    fprintf(stderr,"wrong command %s: wrong parenthesis places.\n", command -> argsComm[0]);
                     returnValue = -1;
                     break;
                 }
@@ -193,7 +193,7 @@ int parse_redirections(Command* command) {
         if (command -> argsComm[i] == NULL) break;
         if (!strcmp(command -> argsComm[i], "&")) {
             if (i != command -> nbArgs - args_removed - 1) { // Si '&' n'est pas le dernier mot de la commande.
-                fprintf(stderr,"Commande %s: Symbole '&' mal placé.\n", command -> argsComm[0]);
+                fprintf(stderr,"wrong command %s: '&' at the wrong place.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
             } else {
@@ -207,14 +207,14 @@ int parse_redirections(Command* command) {
         int redirection_value = is_redirection_symbol(command -> argsComm[i]);
         if (redirection_value) {
             if (command -> argsComm[i+1] == NULL || is_redirection_symbol(command -> argsComm[i+1])) {
-                fprintf(stderr,"Commande %s: Symbole de redirection non suivi d'un nom de fichier.\n", command -> argsComm[0]);
+                fprintf(stderr,"wrong command %s: redirection isn't followed by a file's name.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
             }
             switch (redirection_value) {
                 case 1: // Cas d'un symbole de redirection d'entrée.
                     if (command -> in_redir != NULL) {
-                        fprintf(stderr,"Commande %s: Trop de redirections de l'entrée.\n", command -> argsComm[0]);
+                        fprintf(stderr,"wrong command %s: too much input redirections.\n", command -> argsComm[0]);
                         return -1;
                     }
                     command -> in_redir = malloc(2 * sizeof(char*));
@@ -225,7 +225,7 @@ int parse_redirections(Command* command) {
                     break;
                 case 2: // Cas d'un symbole de redirection de sortie.
                     if (command -> out_redir != NULL) {
-                        fprintf(stderr,"Commande %s: Trop de redirections de la sortie.\n", command -> argsComm[0]);
+                        fprintf(stderr,"wrong command %s: too much output redirections.\n", command -> argsComm[0]);
                         returnValue = -1;
                         break;
                     }
@@ -237,7 +237,7 @@ int parse_redirections(Command* command) {
                     break;
                 case 3: // Cas d'un symbole de redirection de sortie erreur.
                     if (command -> err_redir != NULL) {
-                        fprintf(stderr,"Commande %s: Trop de redirections de la sortie erreur.\n", command -> argsComm[0]);
+                        fprintf(stderr,"wrong command %s: too much error's output redirections.\n", command -> argsComm[0]);
                         returnValue = -1;
                         break;
                     }
@@ -289,11 +289,11 @@ void print_command(Command* command) {
     // Affichage du fait que la commande doit être exécutée en arrière-plan ou non.
     printf("Background: %s\n", command -> background ? "yes" : "no");
     // Affichage entrée, sortie et sortie erreur standard de la commande.
-    if (command -> in_redir != NULL) printf("Entrée: %s %s\n", command -> in_redir[0], command -> in_redir[1]);
-    if (command -> out_redir != NULL) printf("Sortie: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
-    if (command -> err_redir != NULL) printf("Sortie erreur: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
+    if (command -> in_redir != NULL) printf("Input: %s %s\n", command -> in_redir[0], command -> in_redir[1]);
+    if (command -> out_redir != NULL) printf("Output: %s %s\n", command -> out_redir[0], command -> out_redir[1]);
+    if (command -> err_redir != NULL) printf("Error output: %s %s\n", command -> err_redir[0], command -> err_redir[1]);
     // Affichage input de la commande.
-    printf("Input: %s\n", command -> input == NULL ? "aucune" : command -> input -> strComm);
+    printf("Input: %s\n", command -> input == NULL ? "None" : command -> input -> strComm);
     // Affichage substitutions qu'utilise la commande.
     printf("Substitutions: %i\n", command -> nbSubstitutions > 0);
     // for (int i = 0; i < command -> nbSubstitutions-1; ++i) {
