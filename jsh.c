@@ -21,7 +21,6 @@
 
 int main(int argc, char** argv) {
     struct sigaction sa;
-    sa.sa_handler = handler;
     sa.sa_flags = 0;
 
     sigemptyset(&sa.sa_mask);
@@ -76,15 +75,14 @@ void main_loop() {
         if (strInput == NULL) {
             exit(lastReturn);
         }
-        else if (strlen(strInput) == 0 || ctrlSomething) {
-            ctrlSomething = false;
+        else if (strlen(strInput) == 0) {
+            continue;
         }
         // Traitement de la ligne de commande entrée.
         else {
             add_history(strInput); // Ajoute la ligne de commande entrée à l'historique.
             Command* command = getCommand(strInput);
             if (command != NULL) execute_command(command, NULL);
-            ctrlSomething = false;
         }
     }
     // Libération de la mémoire allouée par readline.
