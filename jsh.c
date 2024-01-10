@@ -124,7 +124,7 @@ void execute_command(Command* command, int pipe_out[2]) {
 
     int tmp = apply_redirections(command, pipe_in, pipe_out);
     // À la fin de la pipeline.
-    if (pipe_out == NULL && !(command -> background)) {
+    if (pipe_out == NULL && nbJobs == 0) {//si il y a des jobs qui tournent alors on ne veut pas attendre les fils
         while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
         lastReturn = tmp; // On met à jour lastReturn.
     }
