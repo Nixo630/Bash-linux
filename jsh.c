@@ -20,6 +20,18 @@
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
+    struct sigaction sa;
+    sa.sa_flags = 0;
+
+    sigemptyset(&sa.sa_mask);
+    sigfillset(&sa.sa_mask);
+    sigaddset(&sa.sa_mask,SIGINT);
+    sigaddset(&sa.sa_mask,SIGTERM);
+    sigaddset(&sa.sa_mask,SIGTTIN);
+    sigaddset(&sa.sa_mask,SIGTTOU);
+    sigaddset(&sa.sa_mask,SIGTSTP);
+    sigprocmask(SIG_BLOCK,&sa.sa_mask,NULL);//Desactivation of CTRL-C, CTRL-Z and others
+
     // Initialisation variables globales
     previous_folder = pwd();
     current_folder = pwd();
@@ -62,7 +74,7 @@ void main_loop() {
         // Tests commande non vide.
         if (strInput == NULL) {
             exit(lastReturn);
-        } 
+        }
         else if (strlen(strInput) == 0) {
             continue;
         }
@@ -112,7 +124,7 @@ void execute_command(Command* command, int pipe_out[2]) {
 
     int tmp = apply_redirections(command, pipe_in, pipe_out);
     // À la fin de la pipeline.
-    if (pipe_out == NULL) {
+    if (pipe_out == NULL && nbJobs == 0) {//si il y a des jobs qui tournent alors on ne veut pas attendre les fils
         while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
         lastReturn = tmp; // On met à jour lastReturn.
     }
@@ -329,7 +341,6 @@ int external_command(Command* command, int pipe_out[2]) {
                 // On attend la fin du reste des fils lors du retour à apply_redirections(), après avoir retiré le dernier lecteur.
             }
             else {
-                //sleep(1);
                 int status;
                 pid_t state = waitpid(pid,&status,WNOHANG);
                 if (nbJobs == 40) {
@@ -445,10 +456,7 @@ int exit_jsh(int val) {
     int returnValue;
     if (nbJobs > 0) {
         returnValue = 1;
-        //char* tmp[] = {"clear",NULL};
-        //external_command(tmp,false,"clear");
         fprintf(stderr,"There are other jobs running.\n");
-        //main_loop();
         running = 0;
     }
     else {
@@ -460,29 +468,58 @@ int exit_jsh(int val) {
 
 
 int killJob (char* sig, char* pid) {
-    int sig2 = convert_str_to_int(sig);
-    if (sig2 == INT_MIN) {
-        fprintf(stderr,"wrong command");
+    char* pid2;
+    if (pid == NULL) {
+        pid2 = malloc(sizeof(char)*strlen(sig));
+    }
+    else {
+        pid2 = malloc(sizeof(char)*strlen(pid));
+    }
+    char* sig2 = malloc(sizeof(char)*strlen(sig));
+    char* sig3 = malloc(sizeof(char)*(strlen(sig)-1));
+    if (pid == NULL) {
+        strcpy(pid2,sig);//si pid est null cela signifie que nous n'avons potentiellement que le signal qui sera donc par defaut SIGTERM
+        strcpy(sig2,"-15");//on met donc SIGTERM dans sig
+    }
+    else {
+        strcpy(sig2,sig);
+        strcpy(pid2,pid);
+    }
+    if (*sig2 != '-') {
+        fprintf(stderr,"wrong command : maybe you forgot a '-'\n");
+        return -1;
+    }
+    else {
+        for (int i = 1; i < strlen(sig2); i++) {
+            *(sig3+i-1) = *(sig2+i);//on copie sans le tiret du debut
+        }
+    }
+    int sig4 = convert_str_to_int(sig3);
+    if (sig4 == INT_MIN) {
+        fprintf(stderr,"wrong command\n");
         return -2;
     }
-    int pid2 = convert_str_to_int(pid);
-    if (pid2 == INT_MIN) {
-        fprintf(stderr,"wrong command");
+    int pid3 = convert_str_to_int(pid2);
+    if (pid3 == INT_MIN) {
+        fprintf(stderr,"wrong command\n");
         return -2;
     }
-    int returnValue = kill(pid2,sig2);
-    if (returnValue == 0 && sig2 == 9) {
+    printf("%d,%d\n",pid3,sig4);
+    int returnValue = kill(pid3,sig4);
+    if (returnValue == 0 && (sig4 == 9 || sig4 == 15)) {
         int i = 0;
-        while (l_jobs[i].pid != pid2) {
+        while (l_jobs[i].pid != pid3) {
             i++;
         }
         free(l_jobs[i].state);
         char* state = malloc(sizeof(char)*11);
         strcpy(state,"Terminated");
         l_jobs[i].state = state;
-        print_job(l_jobs[i]);
         removeJob(i);
         nbJobs--;
+    }
+    else {
+        fprintf(stderr,"wrong command name %d!\n",sig4);
     }
     return returnValue;
 }
@@ -520,7 +557,7 @@ char* getPrompt() {
                 char* state = malloc(sizeof(char)*5);
                 strcpy(state,"Done");
                 l_jobs[i].state = state;
-                print_job(l_jobs[i]);
+                print_jobs(l_jobs[i]);
                 removeJob(i);
                 nbJobs--;
             }
@@ -529,21 +566,21 @@ char* getPrompt() {
                 char* state = malloc(sizeof(char)*8);
                 strcpy(state,"Stopped");
                 l_jobs[i].state = state;
-                print_job(l_jobs[i]);
+                print_jobs(l_jobs[i]);
             }
             else if (WIFCONTINUED(status)) {
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*10);
                 strcpy(state,"Continued");
                 l_jobs[i].state = state;
-                print_job(l_jobs[i]);
+                print_jobs(l_jobs[i]);
             }
             else if (WIFSIGNALED(status)) {
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*11);
                 strcpy(state,"Terminated");
                 l_jobs[i].state = state;
-                print_job(l_jobs[i]);
+                print_jobs(l_jobs[i]);
                 removeJob(i);
                 nbJobs--;
             }
