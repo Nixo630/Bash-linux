@@ -528,7 +528,8 @@ int bg(int job_num) {
 
 
     Job *job = & l_jobs[job_num];
-        if(!strcmp(job->ground,"FrontGround")){
+    printf("ground b4 = %s\n", job->ground);
+    if(strcmp(job->ground,"Background")==0){
         fprintf(stderr, "Process already running in Background.\n");
         return 1;
     }
@@ -539,19 +540,25 @@ int bg(int job_num) {
         return 1;
     }
     
+    job->ground = "Background";
 
     pid_t pid = fork();
     if (pid == 0){
-        job->ground = "Background";
+
+        execute_command(getCommand(job->command_name),NULL);
+
+        exit(0);
     }
     else{
         int status;
 
-        if(!strcmp(&job->command_name[strlen(job->command_name)-1],"&")==0){
-            printf("[%d] %s %d running in Background\n", job_num, job->command_name, job->pid);
-            waitpid(pid,&status,0);
-        }
+        printf("[%d] %s %d running in Background\n", nbJobs, job->command_name, job->pid);
+        waitpid(pid,&status,0);
+            
+        
     }
+
+    removeJob(job_num);
     return 0;
 }
 
@@ -565,24 +572,26 @@ int fg(int job_num) {
     }
 
     Job *job = & l_jobs[job_num];
-    if(!strcmp(job->ground,"Background")){
-        fprintf(stderr, "Process already running in Frontground.\n");
+    if(strcmp(job->ground,"Foreground")==0){
+        fprintf(stderr, "Process already running in Foreground.\n");
         return 1;
     }
-    l_jobs[0].ground = "Background"; //shell is in background while process end his execution
+    //l_jobs[0].ground = "Background"; //shell is in background while process end his execution
 
-    job->ground = "Frontground";
+    job->ground = "Foreground";
 
-    
+    printf("%s\n", job->command_name);
     //callRightCommand(getCommand(job->command_name));
-    int status;
-     waitpid(job->pid, &status,WUNTRACED);//
+    //int status;
+     //waitpid(job->pid, &status,WUNTRACED);//
 
-    l_jobs[0].ground = "Frontground";
+    //l_jobs[0].ground = "Foreground";
+    execute_command(getCommand(job->command_name),NULL);
 
+
+    printf("[%d]%s %d running in Foreground\n", nbJobs, job->command_name, job->pid);
     removeJob(job_num);
 
-    printf("[%d] %s %d running in Frontground\n", job_num, job->command_name, job->pid);
     return 0;
 }
 
