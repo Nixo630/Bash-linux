@@ -548,8 +548,16 @@ int fg(int job_num) {
         fprintf(stderr, "Process already running in Frontground.\n");
         return 1;
     }
+    l_jobs[0].ground = "Background"; //le shell est en background le temp que le processus finisse son execution
 
     job->ground = "Frontground";
+
+    callRightCommand(getCommand(job->command_name));//équivalent à waitpid();
+
+    l_jobs[0].ground = "Frontground";
+
+    removeJob(job_num);
+
     printf("[%d] %s %d running in Frontground\n", job_num, job->command_name, job->pid);
     return 0;
 }
