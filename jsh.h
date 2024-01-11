@@ -36,3 +36,4 @@ char* current_folder;
 char* previous_folder;
 int nbJobs;
 Job* l_jobs;
+struct sigaction sa;
