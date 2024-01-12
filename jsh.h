@@ -42,3 +42,4 @@ char* previous_folder;
 int nbJobs;
 Job* l_jobs;
 struct sigaction sa;
+bool printing_jobs;

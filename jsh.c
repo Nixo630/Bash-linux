@@ -36,6 +36,7 @@ int main(int argc, char** argv) {
     lastReturn = 0;
     nbJobs = 0;
     l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément
+    printing_jobs = false;
 
     main_loop(); // récupère et traite les commandes entrées.
 
@@ -257,6 +258,7 @@ int callRightCommand(Command* command) {
     else if (strcmp(command -> argsComm[0],"jobs") == 0) {
         
         if (correct_nbArgs(command -> argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
+            printing_jobs = true;
             print_jobs();
             return 0;
         } else return 1;
@@ -423,7 +425,7 @@ int external_command(Command* command, int pipe_out[2]) {
                         i--;
                     }
                     create_job(command_name,"Running",pid,ground);
-                    fprintf(stderr,"[%d] %d\n",nbJobs,pid);
+                    print_job(l_jobs[nbJobs-1]);
                     return 0;
                 }
             }
@@ -509,7 +511,6 @@ int exit_jsh(int val) {
     int returnValue;
     if (nbJobs > 0) {
         returnValue = 1;
-        fprintf(stderr,"There are other jobs running.\n");
         running = 0;
     }
     else {
@@ -520,8 +521,6 @@ int exit_jsh(int val) {
 }
 
 int bg(int job_num) {
-
-
     if (job_num > nbJobs) {
         fprintf(stderr, "Could not run bg, process not found.\n");
         return 1;
@@ -566,7 +565,6 @@ int bg(int job_num) {
 
 
 int fg(int job_num) {
-
     if (job_num > nbJobs) {
         fprintf(stderr, "Could not run bg, process not found.\n");
         return 1;
@@ -602,8 +600,6 @@ void create_job(char * command_name, char *status, pid_t pid, char * ground){
     strcpy(state,status);
     Job job = {nbJobs, pid, state, command_name,ground};
     l_jobs[nbJobs-1] = job;
-
-
 }
 
 int killJob (char* sig, char* pid) {
@@ -698,7 +694,10 @@ char* getPrompt() {
                 char* state = malloc(sizeof(char)*5);
                 strcpy(state,"Done");
                 l_jobs[i].state = state;
-                print_jobs(l_jobs[i]);
+
+                if (!printing_jobs) {
+                    print_job(l_jobs[i]);
+                }
                 removeJob(i);
                 nbJobs--;
             }
@@ -707,21 +706,27 @@ char* getPrompt() {
                 char* state = malloc(sizeof(char)*8);
                 strcpy(state,"Stopped");
                 l_jobs[i].state = state;
-                print_jobs(l_jobs[i]);
+                if (!printing_jobs) {
+                    print_job(l_jobs[i]);
+                }
             }
             else if (WIFCONTINUED(status)) {
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*10);
                 strcpy(state,"Continued");
                 l_jobs[i].state = state;
-                print_jobs(l_jobs[i]);
+                if (!printing_jobs) {
+                    print_job(l_jobs[i]);
+                }
             }
             else if (WIFSIGNALED(status)) {
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*11);
                 strcpy(state,"Terminated");
                 l_jobs[i].state = state;
-                print_jobs(l_jobs[i]);
+                if (!printing_jobs) {
+                    print_job(l_jobs[i]);
+                }
                 removeJob(i);
                 nbJobs--;
             }
