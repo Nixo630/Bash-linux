@@ -20,7 +20,6 @@
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
-
     sigemptyset(&sa.sa_mask);
 
     sigaddset(&sa.sa_mask,SIGINT);
@@ -644,8 +643,10 @@ int killJob (char* sig, char* pid) {
         fprintf(stderr,"wrong command\n");
         return -2;
     }
+
     printf("%d,%d\n",pid3,sig4);
     int returnValue = kill(pid3,sig4);
+
     if (returnValue == 0 && (sig4 == 9 || sig4 == 15 || sig4 == 19)) {
         int i = 0;
         while (l_jobs[i].pid != pid3) {
