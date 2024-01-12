@@ -21,11 +21,9 @@ Command* getCommand(char* input) {
         strcpy(pipeline[index] -> strComm, firstCommand);
         free(firstCommand);
         // Découpage des arguments et des redirections de la commande.
-        if (parse_command(pipeline[index]) == -1 || parse_redirections(pipeline[index]) == -1) {
-            error = true;
-            break;
-        }
+        if (parse_command(pipeline[index]) == -1 || parse_redirections(pipeline[index]) == -1) error = true;
         index++;
+        if (error) break;
         firstCommand = first_command(input);
     } while (firstCommand != NULL);
     // Liaison des commandes de la pipeline entre elles via leur champ input.
@@ -128,7 +126,7 @@ int parse_command(Command* command) {
             while(1) {
                 tmp = strtok(NULL, " ");
                 if (tmp == NULL) {
-                    fprintf(stderr,"wrong command %s: wrong parenthesis places.\n", command -> argsComm[0]);
+                    fprintf(stderr,"Command %s: badly formed brackets.\n", command -> argsComm[0]);
                     returnValue = -1;
                     break;
                 }
@@ -198,7 +196,7 @@ int parse_redirections(Command* command) {
         if (command -> argsComm[i] == NULL) break;
        /* if (!strcmp(command -> argsComm[i], "&")) {
             if (i != command -> nbArgs - args_removed - 1) { // Si '&' n'est pas le dernier mot de la commande.
-                fprintf(stderr,"wrong command %s: '&' at the wrong place.\n", command -> argsComm[0]);
+                fprintf(stderr,"Command %s: misplaced '&' symbol.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
             } else {
@@ -212,14 +210,14 @@ int parse_redirections(Command* command) {
         int redirection_value = is_redirection_symbol(command -> argsComm[i]);
         if (redirection_value) {
             if (command -> argsComm[i+1] == NULL || is_redirection_symbol(command -> argsComm[i+1])) {
-                fprintf(stderr,"wrong command %s: redirection isn't followed by a file's name.\n", command -> argsComm[0]);
+                fprintf(stderr,"Command %s: redirection symbol not followed by a file name.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
             }
             switch (redirection_value) {
                 case 1: // Cas d'un symbole de redirection d'entrée.
                     if (command -> in_redir != NULL) {
-                        fprintf(stderr,"wrong command %s: too much input redirections.\n", command -> argsComm[0]);
+                        fprintf(stderr,"Command %s: too many input redirections.\n", command -> argsComm[0]);
                         return -1;
                     }
                     command -> in_redir = malloc(2 * sizeof(char*));
@@ -230,7 +228,7 @@ int parse_redirections(Command* command) {
                     break;
                 case 2: // Cas d'un symbole de redirection de sortie.
                     if (command -> out_redir != NULL) {
-                        fprintf(stderr,"wrong command %s: too much output redirections.\n", command -> argsComm[0]);
+                        fprintf(stderr,"Command %s: too many output redirections.\n", command -> argsComm[0]);
                         returnValue = -1;
                         break;
                     }
@@ -242,7 +240,7 @@ int parse_redirections(Command* command) {
                     break;
                 case 3: // Cas d'un symbole de redirection de sortie erreur.
                     if (command -> err_redir != NULL) {
-                        fprintf(stderr,"wrong command %s: too much error's output redirections.\n", command -> argsComm[0]);
+                        fprintf(stderr,"Command %s: too many error output redirections.\n", command -> argsComm[0]);
                         returnValue = -1;
                         break;
                     }
