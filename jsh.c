@@ -29,7 +29,6 @@ int main(int argc, char** argv) {
     sigaddset(&sa.sa_mask,SIGTSTP);
 
     pthread_sigmask(SIG_BLOCK,&sa.sa_mask,NULL);//Desactivation of signals
-
     // Initialisation variables globales
     previous_folder = pwd();
     current_folder = pwd();
@@ -223,7 +222,9 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
 // Exécute la bonne commande à partir des mots donnés en argument.
 int callRightCommand(Command* command) {
     // Commande cd
+    
     if (strcmp(command -> argsComm[0], "cd") == 0) {
+
         if (correct_nbArgs(command -> argsComm, 1, 2)) {
             if (command -> argsComm[1] == NULL || strcmp(command -> argsComm[1],"$HOME") == 0) {
                 char* home = getenv("HOME");
@@ -254,6 +255,7 @@ int callRightCommand(Command* command) {
     }
     // Commande jobs
     else if (strcmp(command -> argsComm[0],"jobs") == 0) {
+        
         if (correct_nbArgs(command -> argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
             print_jobs();
             return 0;
@@ -261,6 +263,7 @@ int callRightCommand(Command* command) {
     }
     // Commande kill
     else if (strcmp(command -> argsComm[0],"kill") == 0) {
+        
         if (correct_nbArgs(command -> argsComm, 2, 3)) {
             int tmp = killJob(command -> argsComm[1],command -> argsComm[2]);
             if (tmp == -1) {
@@ -269,6 +272,55 @@ int callRightCommand(Command* command) {
             return tmp;
         } else return 1;
     }
+    // Command bg
+    else if (strcmp(command -> argsComm[0],"bg") == 0) {
+
+        
+        if (correct_nbArgs(command -> argsComm, 2, 3)) {
+            char * s = command -> argsComm[1];
+            char * secondlast = &s[strlen(s)-2];
+            char * last = &s[strlen(s)-1];
+            char * final = malloc(sizeof(char)*2);
+            if (!strcmp(secondlast,"%")) {
+                strcpy(&final[0],secondlast);
+                strcpy(&final[1],last);
+            }
+            else strcpy(&final[0], last);
+
+            int result = bg(convert_str_to_int(final)-1);
+
+            free(final);
+            return result;
+            
+        }
+        else{
+            return 1;
+        }
+    }
+    // Command fg
+    else if (strcmp(command -> argsComm[0],"fg") == 0) {
+        
+        if (correct_nbArgs(command -> argsComm, 2, 3)) {
+            char * s = command -> argsComm[1];
+            char * secondlast = &s[strlen(s)-2];
+            char * last = &s[strlen(s)-1];
+            char * final = malloc(sizeof(char)*2);
+            if (!strcmp(secondlast,"%")) {
+                strcpy(&final[0],secondlast);
+                strcpy(&final[1],last);
+            }
+            else strcpy(&final[0], last);
+            int result = fg(convert_str_to_int(final)-1);
+
+            free(final);
+            return result;
+            
+        }
+        else{
+            return 1;
+        }
+    }
+    
     // Commande exit
     else if (strcmp(command -> argsComm[0], "exit") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 2)) {
@@ -287,6 +339,8 @@ int callRightCommand(Command* command) {
             }
         } else return 1;
     }
+    
+                
     else return 1;
 }
 
@@ -312,7 +366,7 @@ int external_command(Command* command, int pipe_out[2]) {
     pid_t pid = fork();
 
     if (pid == 0) { // processus enfant
-        pthread_sigmask(SIG_UNBLOCK,&sa.sa_mask,NULL);
+    pthread_sigmask(SIG_UNBLOCK,&sa.sa_mask,NULL);
         int tmp = 0;
         if (nbJobs < 40) {
             if (pipe_out != NULL) { // Redirection de la sortie de la commande exécutée si c'est attendu.
@@ -323,7 +377,8 @@ int external_command(Command* command, int pipe_out[2]) {
             }
             // On exécute aussi ici les commandes internes qui affichent quelque chose.
             if (!strcmp(command -> argsComm[0], "pwd") || !strcmp(command -> argsComm[0], "?")
-                || !strcmp(command -> argsComm[0], "kill") || !strcmp(command -> argsComm[0], "jobs")) {
+                || !strcmp(command -> argsComm[0], "kill") || !strcmp(command -> argsComm[0], "jobs")
+                || !strcmp(command -> argsComm[0], "bg") || !strcmp(command -> argsComm[0], "fg")) {
                 tmp = callRightCommand(command);
             } else {
                 tmp = execvp(command -> argsComm[0], command -> argsComm);
@@ -353,22 +408,21 @@ int external_command(Command* command, int pipe_out[2]) {
                     return 1;
                 }
                 else {
-                    nbJobs++;
                     char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
                     strcpy(command_name,command -> strComm);
                     int i = strlen(command_name)-1;
+                    char * ground = malloc(sizeof(char) * 11);
+                    strcpy(ground,"Foreground");
                     while (true) {//supprimer le & a la fin de la commande
                         if (*(command_name+i) == '&') {
+                            strcpy(ground,"Background");
                             *(command_name+i) = ' ';
                             break;
                         }
                         *(command_name+i) = ' ';
                         i--;
                     }
-                    char* state = malloc(sizeof(char)*8);
-                    strcpy(state,"Running");
-                    Job tmp = {nbJobs, pid, state, command_name};
-                    l_jobs[nbJobs-1] = tmp;
+                    create_job(command_name,"Running",pid,ground);
                     fprintf(stderr,"[%d] %d\n",nbJobs,pid);
                     return 0;
                 }
@@ -465,6 +519,92 @@ int exit_jsh(int val) {
     return returnValue;
 }
 
+int bg(int job_num) {
+
+
+    if (job_num > nbJobs) {
+        fprintf(stderr, "Could not run bg, process not found.\n");
+        return 1;
+    }
+
+
+    Job *job = & l_jobs[job_num];
+    printf("ground b4 = %s\n", job->ground);
+    if(strcmp(job->ground,"Background")==0){
+        fprintf(stderr, "Process already running in Background.\n");
+        return 1;
+    }
+    
+
+    if (kill(job->pid, SIGCONT) < 0) {
+        perror("Could not run bg ");
+        return 1;
+    }
+    
+    job->ground = "Background";
+
+    pid_t pid = fork();
+    if (pid == 0){
+
+        execute_command(getCommand(job->command_name),NULL);
+
+        exit(0);
+    }
+    else{
+        int status;
+
+        printf("[%d] %s %d running in Background\n", nbJobs, job->command_name, job->pid);
+        waitpid(pid,&status,0);
+            
+        
+    }
+
+    removeJob(job_num);
+    return 0;
+}
+
+
+
+int fg(int job_num) {
+
+    if (job_num > nbJobs) {
+        fprintf(stderr, "Could not run bg, process not found.\n");
+        return 1;
+    }
+
+    Job *job = & l_jobs[job_num];
+    if(strcmp(job->ground,"Foreground")==0){
+        fprintf(stderr, "Process already running in Foreground.\n");
+        return 1;
+    }
+    //l_jobs[0].ground = "Background"; //shell is in background while process end his execution
+
+    job->ground = "Foreground";
+
+    printf("%s\n", job->command_name);
+    //callRightCommand(getCommand(job->command_name));
+    //int status;
+     //waitpid(job->pid, &status,WUNTRACED);//
+
+    //l_jobs[0].ground = "Foreground";
+    execute_command(getCommand(job->command_name),NULL);
+
+
+    printf("[%d]%s %d running in Foreground\n", nbJobs, job->command_name, job->pid);
+    removeJob(job_num);
+
+    return 0;
+}
+
+void create_job(char * command_name, char *status, pid_t pid, char * ground){
+    nbJobs++;
+    char* state = malloc(sizeof(char)*strlen(status));
+    strcpy(state,status);
+    Job job = {nbJobs, pid, state, command_name,ground};
+    l_jobs[nbJobs-1] = job;
+
+
+}
 
 int killJob (char* sig, char* pid) {
     char* pid2;

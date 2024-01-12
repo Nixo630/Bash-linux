@@ -7,7 +7,7 @@
 
 /* Prend en argument une string correspondant à une commande ou à une pipeline et renvoie une structure
 Command associée, avec dans ses champs les structures Command associées à son input et aux substitutions
-quOB'elle utilise. */
+qu'elle utilise. */
 Command* getCommand(char* input) {
     Command* pipeline[MAX_LENGTH_PIPELINE]; // Tableau pour stocker temporairement les commandes de la pipeline.
     unsigned index = 0;
@@ -151,7 +151,12 @@ int parse_command(Command* command) {
                 command -> nbSubstitutions++;
             }
             memset(inside_parentheses,0,strlen(inside_parentheses));
-        } else strcpy(command -> argsComm[index],tmp);
+        }
+        else if(strcmp(tmp,"&")==0){//& is always the end of the command
+            command->nbSubstitutions++;
+        }
+        
+         else strcpy(command -> argsComm[index],tmp);
         ++index;
     }
     command -> nbArgs = index;
@@ -191,7 +196,7 @@ int parse_redirections(Command* command) {
     unsigned args_removed = 0;
     for (unsigned i = 0; i < command -> nbArgs; ++i) {
         if (command -> argsComm[i] == NULL) break;
-        if (!strcmp(command -> argsComm[i], "&")) {
+       /* if (!strcmp(command -> argsComm[i], "&")) {
             if (i != command -> nbArgs - args_removed - 1) { // Si '&' n'est pas le dernier mot de la commande.
                 fprintf(stderr,"wrong command %s: '&' at the wrong place.\n", command -> argsComm[0]);
                 returnValue = -1;
@@ -203,7 +208,7 @@ int parse_redirections(Command* command) {
                 args_removed++;
                 break;
             }
-        }
+        }*/
         int redirection_value = is_redirection_symbol(command -> argsComm[i]);
         if (redirection_value) {
             if (command -> argsComm[i+1] == NULL || is_redirection_symbol(command -> argsComm[i+1])) {
