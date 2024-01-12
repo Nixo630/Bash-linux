@@ -24,6 +24,7 @@ int killJob (char* sig, char* pid);
 // Fonctions auxiliaires
 int main(int argc, char** argv);
 void main_loop();
+void cmd_background(Command * command);
 void execute_command(Command* command, int pipe_out[2]);
 int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]);
 int callRightCommand(Command* command);
@@ -40,3 +41,4 @@ char* current_folder;
 char* previous_folder;
 int nbJobs;
 Job* l_jobs;
+struct sigaction sa;

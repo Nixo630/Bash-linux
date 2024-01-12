@@ -20,18 +20,16 @@
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
-    struct sigaction sa;
-    sa.sa_flags = 0;
 
     sigemptyset(&sa.sa_mask);
-    sigfillset(&sa.sa_mask);
+
     sigaddset(&sa.sa_mask,SIGINT);
     sigaddset(&sa.sa_mask,SIGTERM);
     sigaddset(&sa.sa_mask,SIGTTIN);
     sigaddset(&sa.sa_mask,SIGTTOU);
     sigaddset(&sa.sa_mask,SIGTSTP);
-    sigprocmask(SIG_BLOCK,&sa.sa_mask,NULL);//Desactivation of CTRL-C, CTRL-Z and others
 
+    pthread_sigmask(SIG_BLOCK,&sa.sa_mask,NULL);//Desactivation of signals
     // Initialisation variables globales
     previous_folder = pwd();
     current_folder = pwd();
@@ -369,6 +367,7 @@ int external_command(Command* command, int pipe_out[2]) {
     pid_t pid = fork();
 
     if (pid == 0) { // processus enfant
+    pthread_sigmask(SIG_UNBLOCK,&sa.sa_mask,NULL);
         int tmp = 0;
         if (nbJobs < 40) {
             if (pipe_out != NULL) { // Redirection de la sortie de la commande exécutée si c'est attendu.
@@ -647,7 +646,7 @@ int killJob (char* sig, char* pid) {
     }
     printf("%d,%d\n",pid3,sig4);
     int returnValue = kill(pid3,sig4);
-    if (returnValue == 0 && (sig4 == 9 || sig4 == 15)) {
+    if (returnValue == 0 && (sig4 == 9 || sig4 == 15 || sig4 == 19)) {
         int i = 0;
         while (l_jobs[i].pid != pid3) {
             i++;
