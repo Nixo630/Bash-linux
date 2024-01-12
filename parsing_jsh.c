@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "toolbox_jsh.h"
 #include "parsing_jsh.h"
 
 
@@ -22,9 +23,16 @@ Command* getCommand(char* input) {
         free(firstCommand);
         // Découpage des arguments et des redirections de la commande.
         if (parse_command(pipeline[index]) == -1 || parse_redirections(pipeline[index]) == -1) error = true;
+        // Préparation prochaine itération.
         index++;
-        if (error) break;
         firstCommand = first_command(input);
+        if (firstCommand == NULL) break;
+        if (is_only_spaces(firstCommand)) {
+            error = true;
+            fprintf(stderr,"Error: empty command inside pipeline.\n");
+            break;
+        }
+        if (error) break;
     } while (firstCommand != NULL);
     // Liaison des commandes de la pipeline entre elles via leur champ input.
     for (unsigned i = 1; i < index; ++i) {
@@ -150,11 +158,7 @@ int parse_command(Command* command) {
             }
             memset(inside_parentheses,0,strlen(inside_parentheses));
         }
-        else if(strcmp(tmp,"&")==0){//& is always the end of the command
-            command->nbSubstitutions++;
-        }
-        
-         else strcpy(command -> argsComm[index],tmp);
+        else strcpy(command -> argsComm[index],tmp);
         ++index;
     }
     command -> nbArgs = index;
@@ -194,19 +198,19 @@ int parse_redirections(Command* command) {
     unsigned args_removed = 0;
     for (unsigned i = 0; i < command -> nbArgs; ++i) {
         if (command -> argsComm[i] == NULL) break;
-       /* if (!strcmp(command -> argsComm[i], "&")) {
+        if (!strcmp(command -> argsComm[i], "&")) {
             if (i != command -> nbArgs - args_removed - 1) { // Si '&' n'est pas le dernier mot de la commande.
                 fprintf(stderr,"Command %s: misplaced '&' symbol.\n", command -> argsComm[0]);
                 returnValue = -1;
                 break;
             } else {
                 command -> background = true;
-                command -> argsComm[i] = NULL;
                 free(command -> argsComm[i]);
+                command -> argsComm[i] = NULL;
                 args_removed++;
                 break;
             }
-        }*/
+        }
         int redirection_value = is_redirection_symbol(command -> argsComm[i]);
         if (redirection_value) {
             if (command -> argsComm[i+1] == NULL || is_redirection_symbol(command -> argsComm[i+1])) {

@@ -15,6 +15,7 @@ void checkAlloc(void* ptr) {
     }
 }
 
+// Prend une string en argument et renvoie l'entier représenté par cette string.
 int convert_str_to_int (char* string) {
     char* string2 = malloc(sizeof(char)*strlen(string)+1);
     // Enlever l'éventuel '-' ou '%' devant le nombre.
@@ -48,4 +49,12 @@ int length_base10(int n) {
         x = x/10;
     }
     return i;
+}
+
+// Vérifie si une string n'est pas constituée que d'espaces.
+int is_only_spaces(char* string) {
+    for (unsigned i=0; i < strlen(string); ++i) {
+        if (string[i] != ' ') return 0;
+    }
+    return 1;
 }

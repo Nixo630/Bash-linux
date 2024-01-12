@@ -72,7 +72,7 @@ void main_loop() {
         if (strInput == NULL) {
             exit(lastReturn);
         }
-        else if (strlen(strInput) == 0) {
+        else if (is_only_spaces(strInput)) {
             continue;
         }
         // Traitement de la ligne de commande entrée.
