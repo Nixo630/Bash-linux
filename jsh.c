@@ -408,18 +408,16 @@ int external_command(Command* command, int pipe_out[2]) {
                     return 1;
                 }
                 else {
-                    char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
-                    int i = 0;
-                    char * ground = malloc(sizeof(char) * 11);
-                    strcpy(ground,"Foreground");
-                    while (*((command->strComm)+i) != '\0') {//supprimer le & a la fin de la commande
-                        if (*((command->strComm)+i+1) == '&') {
-                            strcpy(ground,"Background");
-                            break;
-                        }
-                        *(command_name+i) = *((command->strComm)+i);
-                        i++;
+                    int sizeWhitoutAnd = strlen(command->strComm)-1;
+                    while(*(command->strComm+sizeWhitoutAnd) != '&') {//on enleve le & a la fin
+                        sizeWhitoutAnd--;
                     }
+                    char* command_name = malloc(sizeof(char)*sizeWhitoutAnd);
+                    char * ground = malloc(sizeof(char)*11);
+                    strcpy(ground,"Foreground");
+                    strncpy(command_name,command->strComm,sizeWhitoutAnd-1);
+                    command_name[sizeWhitoutAnd] = '\0';
+
                     create_job(command_name,"Running",pid,ground);
                     print_job(l_jobs[nbJobs-1]);
                     return 0;
@@ -636,7 +634,6 @@ int killJob (char* sig, char* pid) {
         return -2;
     }
 
-    printf("%d,%d\n",pid3,sig4);
     int returnValue = kill(pid3,sig4);
 
     if (returnValue == 0 && (sig4 == 9 || sig4 == 15 || sig4 == 19)) {
