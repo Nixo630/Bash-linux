@@ -633,6 +633,9 @@ int killJob (char* sig, char* pid) {
         fprintf(stderr,"wrong command\n");
         return -2;
     }
+    else if (pid3 <= nbJobs) {
+        pid3 = l_jobs[pid3].pid;//si on voit que le pid donné n'est pas un pid mais un numéro de jobs alors on met le pid du numéro de job concerné
+    }
 
     int returnValue = kill(pid3,sig4);
 
@@ -647,9 +650,6 @@ int killJob (char* sig, char* pid) {
         l_jobs[i].state = state;
         removeJob(i);
         nbJobs--;
-    }
-    else {
-        fprintf(stderr,"wrong command name %d!\n",sig4);
     }
     return returnValue;
 }
