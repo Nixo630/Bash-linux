@@ -409,18 +409,16 @@ int external_command(Command* command, int pipe_out[2]) {
                 }
                 else {
                     char* command_name = malloc(sizeof(char)*strlen(command -> strComm));
-                    strcpy(command_name,command -> strComm);
-                    int i = strlen(command_name)-1;
+                    int i = 0;
                     char * ground = malloc(sizeof(char) * 11);
                     strcpy(ground,"Foreground");
-                    while (true) {//supprimer le & a la fin de la commande
-                        if (*(command_name+i) == '&') {
+                    while (*((command->strComm)+i) != '\0') {//supprimer le & a la fin de la commande
+                        if (*((command->strComm)+i+1) == '&') {
                             strcpy(ground,"Background");
-                            *(command_name+i) = ' ';
                             break;
                         }
-                        *(command_name+i) = ' ';
-                        i--;
+                        *(command_name+i) = *((command->strComm)+i);
+                        i++;
                     }
                     create_job(command_name,"Running",pid,ground);
                     print_job(l_jobs[nbJobs-1]);
