@@ -27,11 +27,6 @@ int convert_str_to_int (char* string) {
     } else strcpy(string2,string);
     char** tmp = malloc(sizeof(char*));
     int int_args = strtol(string2,tmp,10);//base 10 and we store invalids arguments in tmp
-    // if ((strcmp(tmp[0],"") != 0 && strlen(tmp[0]) > 0) || int_args == LONG_MIN || int_args == LONG_MAX) {//we check the second argument doesn't contain some chars
-    //     free(string2);
-    //     free(tmp);
-    //     return INT_MIN;
-    // }
     free(tmp);
     free(string2);
     if (string[0] == '%') {

@@ -1,7 +1,7 @@
 #include <stdbool.h>
 
 // Structures
-struct Job {
+struct Job {//maximum de 40 jobs simultanément
     int nJob;
     int pid;
     char* state;

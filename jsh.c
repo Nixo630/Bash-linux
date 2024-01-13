@@ -416,7 +416,7 @@ int external_command(Command* command, int pipe_out[2]) {
                     char * ground = malloc(sizeof(char)*11);
                     strcpy(ground,"Foreground");
                     strncpy(command_name,command->strComm,sizeWhitoutAnd-1);
-                    command_name[sizeWhitoutAnd] = '\0';
+                    command_name[sizeWhitoutAnd-1] = '\0';
 
                     create_job(command_name,"Running",pid,ground);
                     print_job(l_jobs[nbJobs-1]);
@@ -633,8 +633,14 @@ int killJob (char* sig, char* pid) {
         fprintf(stderr,"wrong command\n");
         return -2;
     }
-    else if (pid3 <= nbJobs) {
-        pid3 = l_jobs[pid3].pid;//si on voit que le pid donné n'est pas un pid mais un numéro de jobs alors on met le pid du numéro de job concerné
+    else if (pid3 < 40) {//car maximum de 40 jobs simultanément
+    //et de toute maniere ce programme n'a pas les droits pour envoyer des signaux aux jobs < 40
+        for (int i = 0; i < nbJobs; i++) {
+            if (l_jobs[i].nJob == pid3) {
+                pid3 = l_jobs[i].pid;//si on voit que le pid donné n'est pas un pid
+                //mais un numéro de jobs alors on met le pid du numéro de job concerné
+            }
+        }
     }
 
     int returnValue = kill(pid3,sig4);
@@ -709,8 +715,8 @@ char* getPrompt() {
             }
             else if (WIFSIGNALED(status)) {
                 free(l_jobs[i].state);
-                char* state = malloc(sizeof(char)*11);
-                strcpy(state,"Terminated");
+                char* state = malloc(sizeof(char)*7);
+                strcpy(state,"Killed");
                 l_jobs[i].state = state;
                 print_job(l_jobs[i]);
                 removeJob(i);
