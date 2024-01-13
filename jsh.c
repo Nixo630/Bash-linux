@@ -36,7 +36,6 @@ int main(int argc, char** argv) {
     lastReturn = 0;
     nbJobs = 0;
     l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément
-    printing_jobs = false;
 
     main_loop(); // récupère et traite les commandes entrées.
 
@@ -258,7 +257,6 @@ int callRightCommand(Command* command) {
     else if (strcmp(command -> argsComm[0],"jobs") == 0) {
         
         if (correct_nbArgs(command -> argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
-            printing_jobs = true;
             print_jobs();
             return 0;
         } else return 1;
@@ -686,7 +684,8 @@ char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
     int l_nbJobs = length_base10(nbJobs);
     int status;
-    for (int i = 0; i < nbJobs; i++) {
+    int i = 0;
+    while(i < nbJobs) {
         if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0) {
             if (WIFEXITED(status)) {
                 kill(l_jobs[i].pid,SIGKILL);
@@ -695,9 +694,7 @@ char* getPrompt() {
                 strcpy(state,"Done");
                 l_jobs[i].state = state;
 
-                if (!printing_jobs) {
-                    print_job(l_jobs[i]);
-                }
+                print_job(l_jobs[i]);
                 removeJob(i);
                 nbJobs--;
             }
@@ -706,30 +703,30 @@ char* getPrompt() {
                 char* state = malloc(sizeof(char)*8);
                 strcpy(state,"Stopped");
                 l_jobs[i].state = state;
-                if (!printing_jobs) {
-                    print_job(l_jobs[i]);
-                }
+                print_job(l_jobs[i]);
             }
             else if (WIFCONTINUED(status)) {
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*10);
                 strcpy(state,"Continued");
                 l_jobs[i].state = state;
-                if (!printing_jobs) {
-                    print_job(l_jobs[i]);
-                }
+                print_job(l_jobs[i]);
             }
             else if (WIFSIGNALED(status)) {
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*11);
                 strcpy(state,"Terminated");
                 l_jobs[i].state = state;
-                if (!printing_jobs) {
-                    print_job(l_jobs[i]);
-                }
+                print_job(l_jobs[i]);
                 removeJob(i);
                 nbJobs--;
             }
+            else {
+                i++;
+            }
+        }
+        else {
+            i++;
         }
     }
     if (strlen(current_folder) == 1) {
