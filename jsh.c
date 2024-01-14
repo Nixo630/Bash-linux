@@ -45,6 +45,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < nbJobs; i++){
         free(l_jobs[i].command_name);
         free(l_jobs[i].state);
+        free(l_jobs[i].ground);
     }
     for (int i = 0; i < nbJobs; i++) {
         kill(l_jobs[i].pid,SIGKILL);
@@ -650,6 +651,10 @@ int killJob (char* sig, char* pid) {
         removeJob(i);
         nbJobs--;
     }
+    free(pid2);
+    free(pid3);
+    free(sig2);
+    free(sig3);
     return returnValue;
 }
 
