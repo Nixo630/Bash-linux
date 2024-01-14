@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <signal.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include "toolbox_jsh.h"
 #include "parsing_jsh.h"
 #include "jsh.h"
@@ -598,6 +599,55 @@ void create_job(char * command_name, char *status, pid_t pid, char * ground){
     l_jobs[nbJobs-1] = job;
 }
 
+void killAllSons(pid_t pid3, int sig) {
+    DIR* dir = opendir("/proc");
+    struct dirent* entry;
+    entry = readdir(dir);
+    while (entry != NULL) {
+        if (entry->d_type == DT_DIR) {//si c'est un fichier
+            char* aPid = entry->d_name;
+            int somePid = convert_str_to_int(aPid);
+            if (somePid != INT_MIN) {//si le format est le bon
+                char* statFile = malloc(sizeof(char)*256);//entry->d_name fait max 256 char
+                sprintf(statFile,"/proc/%s/stat",aPid);
+                int stat = open(statFile,O_RDONLY);
+                char* result = malloc(sizeof(char)*50);
+                read(stat,result,50);
+                int countSpaces = 0;
+                int i = 0;
+                while (countSpaces != 3) {
+                    if (*(result+i) == ' ') {
+                        countSpaces++;
+                    }
+                    i++;
+                }
+                int j = i;
+                while (*(result+i) != ' ') {
+                    i++;
+                }
+                char* strPpid = malloc(sizeof(char)*(i-j)+1);
+                int k = 0;
+                while (*(result+j+k) != ' ') {
+                    *(strPpid+k) = *(result+j+k);
+                    k++;
+                }
+                *(strPpid+k) = '\0';
+                int intPid = convert_str_to_int(strPpid);
+                if (intPid == pid3) {
+                    killAllSons(somePid,sig);//on kill aussi tous les fils des fils
+                    kill(somePid,sig);//kill le fils de -pid3
+                    //printf("oh=%d\n",intPid);
+                }
+                free(strPpid);
+                free(result);
+                free(statFile);
+            }
+        }
+        entry = readdir(dir);
+    }
+    closedir(dir);
+}
+
 int killJob (char* sig, char* pid) {
     char* pid2;
     if (pid == NULL) {
@@ -654,10 +704,14 @@ int killJob (char* sig, char* pid) {
         }
     }
 
-    int returnValue = kill(pid3,sig4);
-    if (returnValue != 0 && pid3 < 0) {
-        returnValue = kill(-pid3,sig4);//si pid3 n'a pas de groupe et on veut tuer son groupe en faisant -pid3
-        //alors on veut au moins etre sur de le tuer lui
+    //printf("pid=%d,sig=%d\n",pid3,sig4);
+    int returnValue;
+    if (pid3 < 0) {
+        killAllSons(-pid3,sig4);
+        returnValue = kill(-pid3,sig4);//on kill aussi le pid apres avoir tuer tous ses fils
+    }
+    else {
+        returnValue = kill(pid3,sig4);
     }
 
     if (returnValue == 0 && (sig4 == 9 || sig4 == 15 || sig4 == 19)) {
