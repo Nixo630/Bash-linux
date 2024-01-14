@@ -260,8 +260,24 @@ int callRightCommand(Command* command) {
     // Commande jobs
     else if (strcmp(command -> argsComm[0],"jobs") == 0) {
         
-        if (correct_nbArgs(command -> argsComm, 1, 1)) { // pour le deuxième jalon pas besoin d'arguments pour jobs
-            print_jobs();
+        if (correct_nbArgs(command -> argsComm, 1, 3)) {
+            if (command->argsComm[2] != NULL) {
+                if (command->argsComm[2][0] != '%') return 1;
+                if (command->argsComm[1][0] != '-') return 1;
+                pid_t pidToFind = convert_str_to_int(command->argsComm[1]);
+                print_jobs(-pidToFind,true,true);
+            }
+            else if (command->argsComm[1] != NULL) {
+                if (command->argsComm[1][0] != '%' && command->argsComm[1][0] != '-') return 1;
+                else if (command->argsComm[1][0] == '%') {
+                    pid_t pidToFind = convert_str_to_int(command->argsComm[1]);
+                    print_jobs(-pidToFind,true,false);
+                }
+                else {
+                    print_jobs(0,false,true);
+                }
+            }
+            else print_jobs(0,false,false);
             return 0;
         } else return 1;
     }
@@ -578,7 +594,7 @@ void create_job(char * command_name, char *status, pid_t pid, char * ground){
     l_jobs[nbJobs-1] = job;
 }
 
-void killAllSons(pid_t pid3, int sig) {
+void killAllSons(pid_t pid3, int sig,bool print) {
     DIR* dir = opendir("/proc");
     struct dirent* entry;
     entry = readdir(dir);
@@ -613,8 +629,15 @@ void killAllSons(pid_t pid3, int sig) {
                 *(strPpid+k) = '\0';
                 int intPid = convert_str_to_int(strPpid);
                 if (intPid == pid3) {
-                    killAllSons(somePid,sig);//on kill aussi tous les fils des fils
-                    kill(somePid,sig);//kill le fils de -pid3
+                    if (print) {
+                        for (int z = 0; z < nbJobs; z++) {
+                            if (l_jobs[z].pid == pid3) {
+                                printf("    | %d %s %s\n",somePid,l_jobs[z].state,l_jobs[z].command_name);
+                            }
+                        }
+                    }
+                    killAllSons(somePid,sig,print);//on kill aussi tous les fils des fils
+                    if (!print) kill(somePid,sig);//kill le fils de -pid3
                     //printf("oh=%d\n",intPid);
                 }
                 free(strPpid);
@@ -650,6 +673,9 @@ int killJob (char* sig, char* pid) {
         strcpy(pid2,pid);
     }
     if (*sig2 != '-') {
+        free(pid2);
+        free(sig2);
+        free(sig3);
         fprintf(stderr,"wrong command : maybe you forgot a '-'\n");
         return -1;
     }
@@ -660,11 +686,17 @@ int killJob (char* sig, char* pid) {
     }
     int sig4 = convert_str_to_int(sig3);
     if (sig4 == INT_MIN) {
+        free(pid2);
+        free(sig2);
+        free(sig3);
         fprintf(stderr,"wrong command\n");
         return -2;
     }
     int pid3 = convert_str_to_int(pid2);
     if (pid3 == INT_MIN) {
+        free(pid2);
+        free(sig2);
+        free(sig3);
         fprintf(stderr,"wrong command\n");
         return -2;
     }
@@ -686,7 +718,7 @@ int killJob (char* sig, char* pid) {
     //printf("pid=%d,sig=%d\n",pid3,sig4);
     int returnValue;
     if (pid3 < 0) {
-        killAllSons(-pid3,sig4);
+        killAllSons(-pid3,sig4,false);
         returnValue = kill(-pid3,sig4);//on kill aussi le pid apres avoir tuer tous ses fils
     }
     else {
@@ -706,7 +738,6 @@ int killJob (char* sig, char* pid) {
         nbJobs--;
     }
     free(pid2);
-    free(pid3);
     free(sig2);
     free(sig3);
     return returnValue;
@@ -716,10 +747,19 @@ void print_job(Job job) {
     fprintf(stderr,"[%d] %d %s %s\n",job.nJob,job.pid,job.state,job.command_name);
 }
 
-void print_jobs() {
+void print_jobs(pid_t job,bool isJob,bool tHyphen) {
     for (int i = 0; i < nbJobs; i++) {
         if (l_jobs[i].pid != 0) {
-            print_job(l_jobs[i]);
+            if (tHyphen && job && l_jobs[i].pid == job) {
+                print_job(l_jobs[i]);
+                killAllSons(l_jobs[i].pid,0,true);
+            }
+            else if (tHyphen) {
+                print_job(l_jobs[i]);
+                killAllSons(l_jobs[i].pid,0,true);
+            }
+            else if (isJob && l_jobs[i].pid == job) print_job(l_jobs[i]);
+            else print_job(l_jobs[i]);
         }
     }
 }

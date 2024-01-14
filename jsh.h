@@ -17,7 +17,7 @@ int exit_jsh(int val);
 void print_lastReturn();
 int external_command(Command* command, int pipe_out[2]);
 void print_job(Job job);
-void print_jobs();
+void print_jobs(pid_t job,bool isJob,bool tHyphen);
 void removeJob (int n);
 int killJob (char* sig, char* pid);
 
