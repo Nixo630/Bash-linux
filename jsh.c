@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
     lastReturn = 0;
     nbJobs = 0;
     l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément
+    nTimesPrintStop = 0;
 
     main_loop(); // récupère et traite les commandes entrées.
 
@@ -594,7 +595,7 @@ void create_job(char * command_name, char *status, pid_t pid, char * ground){
     l_jobs[nbJobs-1] = job;
 }
 
-void killAllSons(pid_t pid3, int sig,bool print) {
+bool inspectAllSons(pid_t pid3, int sig,bool print,bool hasStopped) {
     DIR* dir = opendir("/proc");
     struct dirent* entry;
     entry = readdir(dir);
@@ -610,11 +611,17 @@ void killAllSons(pid_t pid3, int sig,bool print) {
                 read(stat,result,50);
                 int countSpaces = 0;
                 int i = 0;
-                while (countSpaces != 3) {
+                int maxCountSpaces;
+                if (!hasStopped) maxCountSpaces = 3;//troisieme argument de stat si on veut pas savoir si pid a stop donc le ppid
+                else maxCountSpaces = 2;//deuxieme argument de stat donc l'etat du processus
+                while (countSpaces != maxCountSpaces) {
                     if (*(result+i) == ' ') {
                         countSpaces++;
                     }
                     i++;
+                }
+                if (hasStopped && somePid == pid3) {
+                    return 'T' == *(result+i);
                 }
                 int j = i;
                 while (*(result+i) != ' ') {
@@ -627,8 +634,8 @@ void killAllSons(pid_t pid3, int sig,bool print) {
                     k++;
                 }
                 *(strPpid+k) = '\0';
-                int intPid = convert_str_to_int(strPpid);
-                if (intPid == pid3) {
+                int intPpid = convert_str_to_int(strPpid);
+                if (intPpid == pid3) {
                     if (print) {
                         for (int z = 0; z < nbJobs; z++) {
                             if (l_jobs[z].pid == pid3) {
@@ -636,9 +643,9 @@ void killAllSons(pid_t pid3, int sig,bool print) {
                             }
                         }
                     }
-                    killAllSons(somePid,sig,print);//on kill aussi tous les fils des fils
+                    inspectAllSons(somePid,sig,print,hasStopped);//on kill aussi tous les fils des fils
                     if (!print) kill(somePid,sig);//kill le fils de -pid3
-                    //printf("oh=%d\n",intPid);
+                    //printf("oh=%d\n",intPpid);
                 }
                 free(strPpid);
                 free(result);
@@ -648,6 +655,7 @@ void killAllSons(pid_t pid3, int sig,bool print) {
         entry = readdir(dir);
     }
     closedir(dir);
+    return true;//cela ne change rien
 }
 
 int killJob (char* sig, char* pid) {
@@ -716,9 +724,10 @@ int killJob (char* sig, char* pid) {
     }
 
     //printf("pid=%d,sig=%d\n",pid3,sig4);
+    bool tmp = inspectAllSons(pid3,0,false,true);
     int returnValue;
     if (pid3 < 0) {
-        killAllSons(-pid3,sig4,false);
+        inspectAllSons(-pid3,sig4,false,false);//respectivement les arguments print et hasStopped pour les deux booléens
         returnValue = kill(-pid3,sig4);//on kill aussi le pid apres avoir tuer tous ses fils
     }
     else {
@@ -737,6 +746,18 @@ int killJob (char* sig, char* pid) {
         removeJob(i);
         nbJobs--;
     }
+    else if (returnValue == 0 && sig4 == 18 && tmp){
+        printf("coucou\n");
+        int i = 0;
+        while (l_jobs[i].pid != pid3) {
+            i++;
+        }
+        free(l_jobs[i].state);
+        char* state = malloc(sizeof(char)*11);
+        strcpy(state,"Running");
+        l_jobs[i].state = state;
+        printf("%s\n",l_jobs[i].state);
+    }
     free(pid2);
     free(sig2);
     free(sig3);
@@ -752,11 +773,11 @@ void print_jobs(pid_t job,bool isJob,bool tHyphen) {
         if (l_jobs[i].pid != 0) {
             if (tHyphen && job && l_jobs[i].pid == job) {
                 print_job(l_jobs[i]);
-                killAllSons(l_jobs[i].pid,0,true);
+                inspectAllSons(l_jobs[i].pid,0,true,false);
             }
             else if (tHyphen) {
                 print_job(l_jobs[i]);
-                killAllSons(l_jobs[i].pid,0,true);
+                inspectAllSons(l_jobs[i].pid,0,true,false);
             }
             else if (isJob && l_jobs[i].pid == job) print_job(l_jobs[i]);
             else print_job(l_jobs[i]);
@@ -779,8 +800,18 @@ char* getPrompt() {
     int status;
     int i = 0;
     while(i < nbJobs) {
-        if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0) {
-            if (WIFEXITED(status)) {
+        int tmp = inspectAllSons(l_jobs[i].pid,0,false,true);
+        if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0 || (tmp && nTimesPrintStop == 0)) {
+            if ((tmp && nTimesPrintStop == 0) || WIFSTOPPED(status)) {
+                if (tmp) nTimesPrintStop++;
+                free(l_jobs[i].state);
+                char* state = malloc(sizeof(char)*8);
+                strcpy(state,"Stopped");
+                l_jobs[i].state = state;
+                print_job(l_jobs[i]);
+                i++;
+            }
+            else if (WIFEXITED(status)) {
                 kill(l_jobs[i].pid,SIGKILL);
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*5);
@@ -791,19 +822,14 @@ char* getPrompt() {
                 removeJob(i);
                 nbJobs--;
             }
-            else if (WIFSTOPPED(status)) {
-                free(l_jobs[i].state);
-                char* state = malloc(sizeof(char)*8);
-                strcpy(state,"Stopped");
-                l_jobs[i].state = state;
-                print_job(l_jobs[i]);
-            }
             else if (WIFCONTINUED(status)) {
+                nTimesPrintStop = 0;
                 free(l_jobs[i].state);
                 char* state = malloc(sizeof(char)*10);
                 strcpy(state,"Continued");
                 l_jobs[i].state = state;
                 print_job(l_jobs[i]);
+                i++;
             }
             else if (WIFSIGNALED(status)) {
                 free(l_jobs[i].state);
