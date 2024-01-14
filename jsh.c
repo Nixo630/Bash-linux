@@ -601,6 +601,10 @@ int killJob (char* sig, char* pid) {
     if (pid == NULL) {
         pid2 = malloc(sizeof(char)*strlen(sig));
     }
+    else if (*(pid) == '-') {
+        fprintf(stderr,"error with arguments\n");
+        return -1;
+    }
     else {
         pid2 = malloc(sizeof(char)*strlen(pid));
     }
@@ -633,17 +637,26 @@ int killJob (char* sig, char* pid) {
         fprintf(stderr,"wrong command\n");
         return -2;
     }
-    else if (pid3 < 40) {//car maximum de 40 jobs simultanément
+    if (pid3 < 40) {//car maximum de 40 jobs simultanément
     //et de toute maniere ce programme n'a pas les droits pour envoyer des signaux aux jobs < 40
         for (int i = 0; i < nbJobs; i++) {
             if (l_jobs[i].nJob == pid3) {
-                pid3 = l_jobs[i].pid;//si on voit que le pid donné n'est pas un pid
-                //mais un numéro de jobs alors on met le pid du numéro de job concerné
+                if (*(pid2) == '%') {
+                    pid3 = -(l_jobs[i].pid);
+                }
+                else {
+                    pid3 = l_jobs[i].pid;//si on voit que le pid donné n'est pas un pid
+                    //mais un numéro de jobs alors on met le pid du numéro de job concerné
+                }
             }
         }
     }
 
     int returnValue = kill(pid3,sig4);
+    if (returnValue != 0 && pid3 < 0) {
+        returnValue = kill(-pid3,sig4);//si pid3 n'a pas de groupe et on veut tuer son groupe en faisant -pid3
+        //alors on veut au moins etre sur de le tuer lui
+    }
 
     if (returnValue == 0 && (sig4 == 9 || sig4 == 15 || sig4 == 19)) {
         int i = 0;
@@ -652,7 +665,7 @@ int killJob (char* sig, char* pid) {
         }
         free(l_jobs[i].state);
         char* state = malloc(sizeof(char)*11);
-        strcpy(state,"Terminated");
+        strcpy(state,"Killed");
         l_jobs[i].state = state;
         removeJob(i);
         nbJobs--;

@@ -29,8 +29,8 @@ int convert_str_to_int (char* string) {
     int int_args = strtol(string2,tmp,10);//base 10 and we store invalids arguments in tmp
     free(tmp);
     free(string2);
-    if (string[0] == '%') {
-        return getpgid(int_args);
+    if (string[0] == '%' && int_args >= 40) {
+        return -int_args;//getpgid(int_args);//car si il y a un pourcent nous voulons retourner le pid du groupe nous meme plus tard
     }
     return int_args;
 }
