@@ -211,6 +211,8 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
         tmp = callRightCommand(command); // cd et exit doivent être exécutées sur le processus jsh.
     } else tmp = external_command(command, pipe_out);
 
+    lastReturn = tmp;
+
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
     if (fd_out != -1) dup2(cpy_stdout, 1);
@@ -449,7 +451,6 @@ char* pwd() {
     return buf;
 }
 
-
 int cd (char* pathname) {
     char* tmp = pwd();
     int returnValue = chdir(pathname);
@@ -504,8 +505,9 @@ void print_lastReturn() {
 int exit_jsh(int val) {
     int returnValue;
     if (nbJobs > 0) {
+        fprintf(stderr,"exit\n");
+        fprintf(stderr,"There are stopped jobs.\n");
         returnValue = 1;
-        running = 0;
     }
     else {
         returnValue = val;
