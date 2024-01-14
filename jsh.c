@@ -274,8 +274,8 @@ int callRightCommand(Command* command) {
             return tmp;
         } else return 1;
     }
-    // Command bg
-    else if (strcmp(command -> argsComm[0],"bg") == 0) {
+    // Command bg et fg
+    else if (strcmp(command -> argsComm[0],"bg") == 0 || strcmp(command -> argsComm[0],"fg") == 0 ) {
 
         
         if (correct_nbArgs(command -> argsComm, 2, 3)) {
@@ -288,32 +288,9 @@ int callRightCommand(Command* command) {
                 strcpy(&final[1],last);
             }
             else strcpy(&final[0], last);
-
-            int result = bg(convert_str_to_int(final)-1);
-
-            free(final);
-            return result;
-            
-        }
-        else{
-            return 1;
-        }
-    }
-    // Command fg
-    else if (strcmp(command -> argsComm[0],"fg") == 0) {
-        
-        if (correct_nbArgs(command -> argsComm, 2, 3)) {
-            char * s = command -> argsComm[1];
-            char * secondlast = &s[strlen(s)-2];
-            char * last = &s[strlen(s)-1];
-            char * final = malloc(sizeof(char)*2);
-            if (!strcmp(secondlast,"%")) {
-                strcpy(&final[0],secondlast);
-                strcpy(&final[1],last);
-            }
-            else strcpy(&final[0], last);
-            int result = fg(convert_str_to_int(final)-1);
-
+            int result;
+            if(strcmp(command -> argsComm[0],"bg") == 0) result = bg(convert_str_to_int(final)-1);
+            else result = fg(convert_str_to_int(final)-1);
             free(final);
             return result;
             
@@ -416,7 +393,7 @@ int external_command(Command* command, int pipe_out[2]) {
                     }
                     char* command_name = malloc(sizeof(char)*sizeWhitoutAnd);
                     char * ground = malloc(sizeof(char)*11);
-                    strcpy(ground,"Foreground");
+                    strcpy(ground,"Background");
                     strncpy(command_name,command->strComm,sizeWhitoutAnd-1);
                     command_name[sizeWhitoutAnd-1] = '\0';
 
@@ -541,7 +518,7 @@ int bg(int job_num) {
     pid_t pid = fork();
     if (pid == 0){
 
-        execute_command(getCommand(job->command_name),NULL);
+        execute_command(getCommand(job->command_name+'&'),NULL);
 
         exit(0);
     }
@@ -581,10 +558,11 @@ int fg(int job_num) {
      //waitpid(job->pid, &status,WUNTRACED);//
 
     //l_jobs[0].ground = "Foreground";
+    printf("[%d]%s %d running in Foreground\n", nbJobs, job->command_name, job->pid);
+
     execute_command(getCommand(job->command_name),NULL);
 
 
-    printf("[%d]%s %d running in Foreground\n", nbJobs, job->command_name, job->pid);
     removeJob(job_num);
 
     return 0;
