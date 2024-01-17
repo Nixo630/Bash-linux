@@ -22,6 +22,4 @@ void print_jobs(pid_t job, bool isJob, bool tHyphen);
 void removeJob (int n);
 bool inspectAllSons(pid_t pid3, int sig,bool print,bool hasStopped);
 int killJob (char* sig, char* pid);
-int bg(int job_num);
-int fg(int job_num);
 void check_sons_state();
