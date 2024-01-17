@@ -24,6 +24,6 @@ bool running;
 int lastReturn;
 char* current_folder;
 char* previous_folder;
-extern int nbJobs;
-extern Job* l_jobs;
 struct sigaction sa;
+int nbJobs;
+Job* l_jobs;
