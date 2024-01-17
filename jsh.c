@@ -21,27 +21,28 @@
 #define BLEU "\033[01;34m"
 
 int main(int argc, char** argv) {
-    sigemptyset(&sa.sa_mask);
 
+    // Mise en place d'un masque.
+    sigemptyset(&sa.sa_mask);
     sigaddset(&sa.sa_mask,SIGINT);
     sigaddset(&sa.sa_mask,SIGTERM);
     sigaddset(&sa.sa_mask,SIGTTIN);
     sigaddset(&sa.sa_mask,SIGTTOU);
     sigaddset(&sa.sa_mask,SIGTSTP);
+    pthread_sigmask(SIG_BLOCK,&sa.sa_mask,NULL);
 
-    pthread_sigmask(SIG_BLOCK,&sa.sa_mask,NULL);//Desactivation of signals
-    // Initialisation variables globales
+    // Initialisation variables globales.
     previous_folder = pwd();
     current_folder = pwd();
     running = 1;
     lastReturn = 0;
     nbJobs = 0;
-    l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément
+    l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément.
     nTimesPrintStop = 0;
 
     main_loop(); // récupère et traite les commandes entrées.
 
-    // Libération des buffers
+    // Libération des buffers.
     free(previous_folder);
     free(current_folder);
     for (int i = 0; i < nbJobs; i++){
@@ -67,6 +68,8 @@ void main_loop() {
     while (running) {
         // Libération de la mémoire allouée par readline.
         free(strInput);
+        // On vérifie l'état des éventuels processus créés précedemment.
+        check_sons_state();
         // Récupération de la commande entrée et affichage du prompt.
         char* tmp = getPrompt();
         strInput = readline(tmp);
@@ -124,7 +127,7 @@ void execute_command(Command* command, int pipe_out[2]) {
 
     int tmp = apply_redirections(command, pipe_in, pipe_out);
     // À la fin de la pipeline.
-    if (pipe_out == NULL && nbJobs == 0) {//si il y a des jobs qui tournent alors on ne veut pas attendre les fils
+    if (pipe_out == NULL && !command -> background) {//si il y a des jobs qui tournent alors on ne veut pas attendre les fils
         while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
         lastReturn = tmp; // On met à jour lastReturn.
     }

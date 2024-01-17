@@ -11,8 +11,8 @@ struct Job {//maximum de 40 jobs simultanément
 typedef struct Job Job;
 
 // Variables globales
-static int nbJobs;
-static Job* l_jobs;
+int nbJobs;
+Job* l_jobs;
 int nTimesPrintStop;
 
 // Fonctions
