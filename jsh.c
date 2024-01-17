@@ -214,8 +214,6 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
         tmp = callRightCommand(command); // cd et exit doivent être exécutées sur le processus jsh.
     } else tmp = external_command(command, pipe_out);
 
-    lastReturn = tmp;
-
     // Remise en état.
     if (fd_in != -1) dup2(cpy_stdin, 0);
     if (fd_out != -1) dup2(cpy_stdout, 1);
@@ -224,12 +222,11 @@ int apply_redirections(Command* command, int pipe_in[2], int pipe_out[2]) {
     return tmp;
 }
 
-// Exécute la bonne commande à partir des mots donnés en argument.
+/* Prend en argument une structure Command correspondant à une commande interne, vérifie que le
+nombre d'arguments est correct, et appel la fonction qui correspond à l'exécution de cette commande. */
 int callRightCommand(Command* command) {
     // Commande cd
-    
     if (strcmp(command -> argsComm[0], "cd") == 0) {
-
         if (correct_nbArgs(command -> argsComm, 1, 2)) {
             if (command -> argsComm[1] == NULL || strcmp(command -> argsComm[1],"$HOME") == 0) {
                 char* home = getenv("HOME");
@@ -260,7 +257,6 @@ int callRightCommand(Command* command) {
     }
     // Commande jobs
     else if (strcmp(command -> argsComm[0],"jobs") == 0) {
-        
         if (correct_nbArgs(command -> argsComm, 1, 3)) {
             if (command->argsComm[2] != NULL) {
                 if (command->argsComm[2][0] != '%') return 1;
@@ -284,7 +280,6 @@ int callRightCommand(Command* command) {
     }
     // Commande kill
     else if (strcmp(command -> argsComm[0],"kill") == 0) {
-        
         if (correct_nbArgs(command -> argsComm, 2, 3)) {
             int tmp = killJob(command -> argsComm[1],command -> argsComm[2]);
             if (tmp == -1) {
@@ -293,32 +288,27 @@ int callRightCommand(Command* command) {
             return tmp;
         } else return 1;
     }
-    // Command bg et fg
-    else if (strcmp(command -> argsComm[0],"bg") == 0 || strcmp(command -> argsComm[0],"fg") == 0 ) {
-
-        
-        if (correct_nbArgs(command -> argsComm, 2, 3)) {
-            char * s = command -> argsComm[1];
-            char * secondlast = &s[strlen(s)-2];
-            char * last = &s[strlen(s)-1];
-            char * final = malloc(sizeof(char)*2);
-            if (!strcmp(secondlast,"%")) {
-                strcpy(&final[0],secondlast);
-                strcpy(&final[1],last);
-            }
-            else strcpy(&final[0], last);
-            int result;
-            if(strcmp(command -> argsComm[0],"bg") == 0) result = bg(convert_str_to_int(final)-1);
-            else result = fg(convert_str_to_int(final)-1);
-            free(final);
-            return result;
+    // Commandes bg et fg
+    // else if (strcmp(command -> argsComm[0],"bg") == 0 || strcmp(command -> argsComm[0],"fg") == 0 ) {
+    //     if (correct_nbArgs(command -> argsComm, 2, 3)) {
+    //         char * s = command -> argsComm[1];
+    //         char * secondlast = &s[strlen(s)-2];
+    //         char * last = &s[strlen(s)-1];
+    //         char * final = malloc(sizeof(char)*2);
+    //         if (!strcmp(secondlast,"%")) {
+    //             strcpy(&final[0],secondlast);
+    //             strcpy(&final[1],last);
+    //         }
+    //         else strcpy(&final[0], last);
+    //         int result;
+    //         if(strcmp(command -> argsComm[0],"bg") == 0) result = bg(convert_str_to_int(final)-1);
+    //         else result = fg(convert_str_to_int(final)-1);
+    //         free(final);
+    //         return result;
             
-        }
-        else{
-            return 1;
-        }
-    }
-    
+    //     }
+    //     else return 1;
+    // }
     // Commande exit
     else if (strcmp(command -> argsComm[0], "exit") == 0) {
         if (correct_nbArgs(command -> argsComm, 1, 2)) {
@@ -336,9 +326,7 @@ int callRightCommand(Command* command) {
                 }
             }
         } else return 1;
-    }
-    
-                
+    }  
     else return 1;
 }
 
@@ -364,7 +352,7 @@ int external_command(Command* command, int pipe_out[2]) {
     pid_t pid = fork();
 
     if (pid == 0) { // processus enfant
-    pthread_sigmask(SIG_UNBLOCK,&sa.sa_mask,NULL);
+        pthread_sigmask(SIG_UNBLOCK,&sa.sa_mask,NULL); // On retire le masquage des signaux.
         int tmp = 0;
         if (nbJobs < 40) {
             if (pipe_out != NULL) { // Redirection de la sortie de la commande exécutée si c'est attendu.
@@ -512,342 +500,11 @@ int exit_jsh(int val) {
     return returnValue;
 }
 
-int bg(int job_num) {
-    if (job_num > nbJobs) {
-        fprintf(stderr, "Could not run bg, process not found.\n");
-        return 1;
-    }
 
-
-    Job *job = & l_jobs[job_num];
-    printf("ground b4 = %s\n", job->ground);
-    if(strcmp(job->ground,"Background")==0){
-        fprintf(stderr, "Process already running in Background.\n");
-        return 1;
-    }
-    
-
-    if (kill(job->pid, SIGCONT) < 0) {
-        perror("Could not run bg ");
-        return 1;
-    }
-    
-    job->ground = "Background";
-
-    pid_t pid = fork();
-    if (pid == 0){
-
-        execute_command(getCommand(job->command_name+'&'),NULL);
-
-        exit(0);
-    }
-    else{
-        int status;
-
-        printf("[%d] %s %d running in Background\n", nbJobs, job->command_name, job->pid);
-        waitpid(pid,&status,0);
-            
-        
-    }
-
-    removeJob(job_num);
-    return 0;
-}
-
-
-
-int fg(int job_num) {
-    if (job_num > nbJobs) {
-        fprintf(stderr, "Could not run bg, process not found.\n");
-        return 1;
-    }
-
-    Job *job = & l_jobs[job_num];
-    if(strcmp(job->ground,"Foreground")==0){
-        fprintf(stderr, "Process already running in Foreground.\n");
-        return 1;
-    }
-    //l_jobs[0].ground = "Background"; //shell is in background while process end his execution
-
-    job->ground = "Foreground";
-
-    printf("%s\n", job->command_name);
-    //callRightCommand(getCommand(job->command_name));
-    //int status;
-     //waitpid(job->pid, &status,WUNTRACED);//
-
-    //l_jobs[0].ground = "Foreground";
-    printf("[%d]%s %d running in Foreground\n", nbJobs, job->command_name, job->pid);
-
-    execute_command(getCommand(job->command_name),NULL);
-
-
-    removeJob(job_num);
-
-    return 0;
-}
-
-void create_job(char * command_name, char *status, pid_t pid, char * ground){
-    nbJobs++;
-    char* state = malloc(sizeof(char)*strlen(status));
-    strcpy(state,status);
-    Job job = {nbJobs, pid, state, command_name,ground};
-    l_jobs[nbJobs-1] = job;
-}
-
-bool inspectAllSons(pid_t pid3, int sig,bool print,bool hasStopped) {
-    DIR* dir = opendir("/proc");
-    struct dirent* entry;
-    entry = readdir(dir);
-    while (entry != NULL) {
-        if (entry->d_type == DT_DIR) {//si c'est un fichier
-            char* aPid = entry->d_name;
-            int somePid = convert_str_to_int(aPid);
-            if (somePid != INT_MIN) {//si le format est le bon
-                char* statFile = malloc(sizeof(char)*256);//entry->d_name fait max 256 char
-                sprintf(statFile,"/proc/%s/stat",aPid);
-                int stat = open(statFile,O_RDONLY);
-                char* result = malloc(sizeof(char)*50);
-                read(stat,result,50);
-                int countSpaces = 0;
-                int i = 0;
-                int maxCountSpaces;
-                if (!hasStopped) maxCountSpaces = 3;//troisieme argument de stat si on veut pas savoir si pid a stop donc le ppid
-                else maxCountSpaces = 2;//deuxieme argument de stat donc l'etat du processus
-                while (countSpaces != maxCountSpaces) {
-                    if (*(result+i) == ' ') {
-                        countSpaces++;
-                    }
-                    i++;
-                }
-                if (hasStopped && somePid == pid3) {
-                    return 'T' == *(result+i);
-                }
-                int j = i;
-                while (*(result+i) != ' ') {
-                    i++;
-                }
-                char* strPpid = malloc(sizeof(char)*(i-j)+1);
-                int k = 0;
-                while (*(result+j+k) != ' ') {
-                    *(strPpid+k) = *(result+j+k);
-                    k++;
-                }
-                *(strPpid+k) = '\0';
-                int intPpid = convert_str_to_int(strPpid);
-                if (intPpid == pid3) {
-                    if (print) {
-                        for (int z = 0; z < nbJobs; z++) {
-                            if (l_jobs[z].pid == pid3) {
-                                printf("    | %d %s %s\n",somePid,l_jobs[z].state,l_jobs[z].command_name);
-                            }
-                        }
-                    }
-                    inspectAllSons(somePid,sig,print,hasStopped);//on kill aussi tous les fils des fils
-                    if (!print) kill(somePid,sig);//kill le fils de -pid3
-                    //printf("oh=%d\n",intPpid);
-                }
-                free(strPpid);
-                free(result);
-                free(statFile);
-            }
-        }
-        entry = readdir(dir);
-    }
-    closedir(dir);
-    return true;//cela ne change rien
-}
-
-int killJob (char* sig, char* pid) {
-    char* pid2;
-    if (pid == NULL) {
-        pid2 = malloc(sizeof(char)*strlen(sig));
-    }
-    else if (*(pid) == '-') {
-        fprintf(stderr,"error with arguments\n");
-        return -1;
-    }
-    else {
-        pid2 = malloc(sizeof(char)*strlen(pid));
-    }
-    char* sig2 = malloc(sizeof(char)*strlen(sig));
-    char* sig3 = malloc(sizeof(char)*(strlen(sig)-1));
-    if (pid == NULL) {
-        strcpy(pid2,sig);//si pid est null cela signifie que nous n'avons potentiellement que le signal qui sera donc par defaut SIGTERM
-        strcpy(sig2,"-15");//on met donc SIGTERM dans sig
-    }
-    else {
-        strcpy(sig2,sig);
-        strcpy(pid2,pid);
-    }
-    if (*sig2 != '-') {
-        free(pid2);
-        free(sig2);
-        free(sig3);
-        fprintf(stderr,"wrong command : maybe you forgot a '-'\n");
-        return -1;
-    }
-    else {
-        for (int i = 1; i < strlen(sig2); i++) {
-            *(sig3+i-1) = *(sig2+i);//on copie sans le tiret du debut
-        }
-    }
-    int sig4 = convert_str_to_int(sig3);
-    if (sig4 == INT_MIN) {
-        free(pid2);
-        free(sig2);
-        free(sig3);
-        fprintf(stderr,"wrong command\n");
-        return -2;
-    }
-    int pid3 = convert_str_to_int(pid2);
-    if (pid3 == INT_MIN) {
-        free(pid2);
-        free(sig2);
-        free(sig3);
-        fprintf(stderr,"wrong command\n");
-        return -2;
-    }
-    if (pid3 < 40) {//car maximum de 40 jobs simultanément
-    //et de toute maniere ce programme n'a pas les droits pour envoyer des signaux aux jobs < 40
-        for (int i = 0; i < nbJobs; i++) {
-            if (l_jobs[i].nJob == pid3) {
-                if (*(pid2) == '%') {
-                    pid3 = -(l_jobs[i].pid);
-                }
-                else {
-                    pid3 = l_jobs[i].pid;//si on voit que le pid donné n'est pas un pid
-                    //mais un numéro de jobs alors on met le pid du numéro de job concerné
-                }
-            }
-        }
-    }
-
-    //printf("pid=%d,sig=%d\n",pid3,sig4);
-    bool tmp = inspectAllSons(pid3,0,false,true);
-    int returnValue;
-    if (pid3 < 0) {
-        inspectAllSons(-pid3,sig4,false,false);//respectivement les arguments print et hasStopped pour les deux booléens
-        returnValue = kill(-pid3,sig4);//on kill aussi le pid apres avoir tuer tous ses fils
-    }
-    else {
-        returnValue = kill(pid3,sig4);
-    }
-
-    if (returnValue == 0 && (sig4 == 9 || sig4 == 15 || sig4 == 19)) {
-        int i = 0;
-        while (l_jobs[i].pid != pid3) {
-            i++;
-        }
-        free(l_jobs[i].state);
-        char* state = malloc(sizeof(char)*11);
-        strcpy(state,"Killed");
-        l_jobs[i].state = state;
-        removeJob(i);
-        nbJobs--;
-    }
-    else if (returnValue == 0 && sig4 == 18 && tmp){
-        printf("coucou\n");
-        int i = 0;
-        while (l_jobs[i].pid != pid3) {
-            i++;
-        }
-        free(l_jobs[i].state);
-        char* state = malloc(sizeof(char)*11);
-        strcpy(state,"Running");
-        l_jobs[i].state = state;
-        printf("%s\n",l_jobs[i].state);
-    }
-    free(pid2);
-    free(sig2);
-    free(sig3);
-    return returnValue;
-}
-
-void print_job(Job job) {
-    fprintf(stderr,"[%d] %d %s %s\n",job.nJob,job.pid,job.state,job.command_name);
-}
-
-void print_jobs(pid_t job,bool isJob,bool tHyphen) {
-    for (int i = 0; i < nbJobs; i++) {
-        if (l_jobs[i].pid != 0) {
-            if (tHyphen && job && l_jobs[i].pid == job) {
-                print_job(l_jobs[i]);
-                inspectAllSons(l_jobs[i].pid,0,true,false);
-            }
-            else if (tHyphen) {
-                print_job(l_jobs[i]);
-                inspectAllSons(l_jobs[i].pid,0,true,false);
-            }
-            else if (isJob && l_jobs[i].pid == job) print_job(l_jobs[i]);
-            else print_job(l_jobs[i]);
-        }
-    }
-}
-
-void removeJob (int n) {
-    l_jobs[n].nJob = 0;
-    l_jobs[n].pid = 0;
-    free(l_jobs[n].state); 
-    for (int i = n; i < nbJobs; i++) {
-        l_jobs[i] = l_jobs[i+1];
-    }
-}
-
+// Retourne le prompt à afficher.
 char* getPrompt() {
     char* prompt = malloc(sizeof(char)* 50);
     int l_nbJobs = length_base10(nbJobs);
-    int status;
-    int i = 0;
-    while(i < nbJobs) {
-        int tmp = inspectAllSons(l_jobs[i].pid,0,false,true);
-        if (waitpid(l_jobs[i].pid,&status,WNOHANG) != 0 || (tmp && nTimesPrintStop == 0)) {
-            if ((tmp && nTimesPrintStop == 0) || WIFSTOPPED(status)) {
-                if (tmp) nTimesPrintStop++;
-                free(l_jobs[i].state);
-                char* state = malloc(sizeof(char)*8);
-                strcpy(state,"Stopped");
-                l_jobs[i].state = state;
-                print_job(l_jobs[i]);
-                i++;
-            }
-            else if (WIFEXITED(status)) {
-                kill(l_jobs[i].pid,SIGKILL);
-                free(l_jobs[i].state);
-                char* state = malloc(sizeof(char)*5);
-                strcpy(state,"Done");
-                l_jobs[i].state = state;
-
-                print_job(l_jobs[i]);
-                removeJob(i);
-                nbJobs--;
-            }
-            else if (WIFCONTINUED(status)) {
-                nTimesPrintStop = 0;
-                free(l_jobs[i].state);
-                char* state = malloc(sizeof(char)*10);
-                strcpy(state,"Continued");
-                l_jobs[i].state = state;
-                print_job(l_jobs[i]);
-                i++;
-            }
-            else if (WIFSIGNALED(status)) {
-                free(l_jobs[i].state);
-                char* state = malloc(sizeof(char)*7);
-                strcpy(state,"Killed");
-                l_jobs[i].state = state;
-                print_job(l_jobs[i]);
-                removeJob(i);
-                nbJobs--;
-            }
-            else {
-                i++;
-            }
-        }
-        else {
-            i++;
-        }
-    }
     if (strlen(current_folder) == 1) {
         sprintf(prompt, BLEU"[%d]" NORMAL "c$ ", nbJobs);
     }
