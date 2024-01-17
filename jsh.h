@@ -7,8 +7,6 @@ int cd(char* pathname);
 int exit_jsh(int val);
 void print_lastReturn();
 int external_command(Command* command, int pipe_out[2]);
-int bg(int job_num);
-int fg(int job_num);
 
 // Fonctions auxiliaires
 int main(int argc, char** argv);
