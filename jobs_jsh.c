@@ -14,8 +14,6 @@
 #include "jobs_jsh.h"
 #include "toolbox_jsh.h"
 
-int nTimesPrintStop = 0;
-
 void print_job(Job job) {
     fprintf(stderr,"[%d] %d %s %s\n",job.nJob,job.pid,job.state,job.command_name);
 }
@@ -274,8 +272,4 @@ void check_sons_state() {
             i++;
         }
     }
-}
-
-void waitForAllSons(pid_t pid) {
-
 }

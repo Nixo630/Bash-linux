@@ -38,6 +38,7 @@ int main(int argc, char** argv) {
     lastReturn = 0;
     nbJobs = 0;
     l_jobs = malloc(sizeof(Job)*40); //maximum de 40 jobs simultanément.
+    nTimesPrintStop = 0;
 
     main_loop(); // récupère et traite les commandes entrées.
 
@@ -127,7 +128,6 @@ void execute_command(Command* command, int pipe_out[2]) {
     int tmp = apply_redirections(command, pipe_in, pipe_out);
     // À la fin de la pipeline.
     if (pipe_out == NULL && !command -> background) {//si il y a des jobs qui tournent alors on ne veut pas attendre les fils
-        //waitForAllSons();
         while(wait(NULL) > 0); // On attend la fin de tous les processus fils.
         lastReturn = tmp; // On met à jour lastReturn.
     }
@@ -503,42 +503,54 @@ int exit_jsh(int val) {
     return returnValue;
 }
 
-// Relance à l'arrière-plan le job dont le numéro est passé en argument.
 int bg(int job_num) {
     if (job_num > nbJobs) {
         fprintf(stderr, "Could not run bg, process not found.\n");
         return 1;
     }
     Job *job = & l_jobs[job_num];
-    if(!strcmp(job->ground,"Background")){
+    printf("ground b4 = %s\n", job->ground);
+    if(strcmp(job->ground,"Background")==0){
         fprintf(stderr, "Process already running in Background.\n");
         return 1;
     }
-    strcpy(job->ground,"Background");
-    strcat(job->command_name, " &");
-    inspectAllSons(job -> pid, SIGCONT, false, false);
-    kill(job -> pid, SIGCONT);
-    print_job(l_jobs[job_num]);
+    if (kill(job->pid, SIGCONT) < 0) {
+        perror("Could not run bg ");
+        return 1;
+    }
+    job->ground = "Background";
+    pid_t pid = fork();
+    if (pid == 0){
+        strcat(job->command_name, " &");
+        execute_command(getCommand(job->command_name),NULL);
+        exit(0);
+    }
+    else{
+        int status;
+        printf("[%d] %s %d running in Background\n", nbJobs, job->command_name, job->pid);
+        waitpid(pid,&status,0);
+    }
+    removeJob(job_num);
     return 0;
 }
 
-// Relance à l'avant-plan le job dont le numéro est passé en argument.
+
+
 int fg(int job_num) {
     if (job_num > nbJobs) {
         fprintf(stderr, "Could not run bg, process not found.\n");
         return 1;
     }
     Job *job = & l_jobs[job_num];
-    if(!strcmp(job->ground,"Foreground")) {
+    if(strcmp(job->ground,"Foreground")==0){
         fprintf(stderr, "Process already running in Foreground.\n");
         return 1;
     }
-    strcpy(job->ground,"Foreground");
-    inspectAllSons(job -> pid, SIGCONT, false, false);
-    kill(job -> pid, SIGCONT);
-    waitForAllSons(job -> pid);
-    waitpid(job -> pid, NULL, 0);
-    print_job(l_jobs[job_num]);
+    job->ground = "Foreground";
+    printf("%s\n", job->command_name);
+    printf("[%d]%s %d running in Foreground\n", nbJobs, job->command_name, job->pid);
+    execute_command(getCommand(job->command_name),NULL);
+    removeJob(job_num);
     return 0;
 }
 
