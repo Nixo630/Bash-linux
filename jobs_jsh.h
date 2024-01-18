@@ -13,13 +13,13 @@ typedef struct Job Job;
 // Variables globales
 extern int nbJobs;
 extern Job* l_jobs;
-int nTimesPrintStop;
 
 // Fonctions
 void create_job(char * command_name, char *status, pid_t pid, char * ground);
 void print_job(Job job);
 void print_jobs(pid_t job, bool isJob, bool tHyphen);
 void removeJob (int n);
-bool inspectAllSons(pid_t pid3, int sig,bool print,bool hasStopped);
+bool inspectAllSons(pid_t pid, int sig,bool print,bool hasStopped);
 int killJob (char* sig, char* pid);
 void check_sons_state();
+void waitForAllSons(pid_t pid);
